@@ -37,6 +37,7 @@
     "eslint-config-expo": "~58.0.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.7",
+    "fast-check": "^4.10.2",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.11",
     "prettier": "^3.9.10",
@@ -69,7 +70,19 @@
     "collectCoverageFrom": [
       "src/**/*.{ts,tsx}",
       "!src/app/**",
-      "!src/**/*.d.ts"
-    ]
+      "!src/**/*.d.ts",
+      "!src/**/__tests__/**"
+    ],
+    "coverageThreshold": {
+      "./src/protocols/": {
+        "lines": 90
+      },
+      "./src/domain/": {
+        "lines": 90
+      },
+      "./src/state/": {
+        "lines": 90
+      }
+    }
   }
 }

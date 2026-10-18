@@ -107,15 +107,17 @@ ubx-mobile/
 │  │  └─ about.tsx
 │  ├─ __tests__/                     # screen-level tests
 │  ├─ domain/                        # types + pure helpers shared by everything
-│  │  ├─ types.ts                    # Constellation, Satellite, Signal, Fix, DeviceInfo…
-│  │  ├─ constellations.ts           # metadata: shapes, prefixes, colours, id maps
+│  │  ├─ types.ts                    # Constellation, Satellite, Signal, Fix, ReceiverInfo…
+│  │  ├─ events.ts                   # GnssEvent contract (§7.1)
+│  │  ├─ constellations.ts           # metadata: shapes, prefixes, colour tokens, SV labels
 │  │  ├─ signals.ts                  # band/sigId/frequency tables
-│  │  ├─ satKey.ts                   # identity normalisation (§6.3)
-│  │  └─ cn0Scale.ts                 # colour interpolation
+│  │  └─ satKey.ts                   # identity normalisation (§6.3)
 │  ├─ protocols/
+│  │  ├─ pipeline.ts                 # bytes → frames → events (USB + replay sources)
 │  │  ├─ stream/StreamDecoder.ts     # byte demux: NMEA / UBX / RTCM3 / junk
-│  │  ├─ nmea/{parser,checksum,assembler,numbering}.ts + sentences/*.ts
-│  │  └─ ubx/{frame,checksum,builder,ids,interpreter}.ts + messages/*.ts
+│  │  ├─ nmea/{checksum,parser,sentences,interpreter}.ts
+│  │  ├─ ubx/{checksum,builder,ids,messages,interpreter}.ts
+│  │  └─ rtcm/crc24q.ts
 │  ├─ sources/
 │  │  ├─ GnssSource.ts               # interface + shared types
 │  │  ├─ SourceManager.ts
@@ -129,7 +131,7 @@ ubx-mobile/
 │  │  ├─ configStore.ts              # loaded values per layer, staged edits, unsaved diff
 │  │  ├─ rules.ts                    # lock-out rules, rate/throughput limits, constellation constraints
 │  │  └─ backups.ts                  # JSON backup format, auto-backups, restore diff
-│  ├─ state/{GnssAccumulator,gnssStore,settingsStore,consoleStore}.ts
+│  ├─ state/{GnssAccumulator,gnssStore,selectors,settingsStore,storage,consoleStore}.ts
 │  ├─ ui/
 │  │  ├─ components/                 # StatusChip, Card, KeyValueRow, ConstellationBadge, Cn0Bar…
 │  │  ├─ satellites/                 # SatelliteRow, SatelliteTable, SatelliteDetailSheet, FilterBar
@@ -606,20 +608,27 @@ open(port, baud = remembered ?? 38400 for bridges / n.a. for CDC)   # 38400 = u-
 
 ### 7.1 Event contract
 
+Defined in `src/domain/events.ts` (so protocol code does not depend on the source layer):
+
 ```ts
 export type GnssEvent =
   | { t: 'fix'; fix: Partial<Fix>; origin: 'android' | 'ubx' | 'nmea' }
   | { t: 'dop'; dop: Dop; origin: 'android-nmea' | 'ubx' | 'nmea' }
-  | { t: 'satellites'; origin: SatOrigin; scope: 'all' | Constellation; sats: SatObservation[] }
-  | { t: 'signals'; signals: Array<{ key: SatKey } & SignalObs> }      // UBX NAV-SIG
+  | { t: 'satellites'; origin: SatOrigin; scope: string; sats: SatObservation[] } // scope: 'all' or a GSV group key
+  | { t: 'signals'; signals: Array<{ key: SatKey; constellation; svid; glonassFcn? } & SignalObs> } // UBX NAV-SIG
   | { t: 'used'; scope: 'all' | Constellation; keys: SatKey[] }      // NMEA GSA
   | { t: 'ttff'; ms: number }
-  | { t: 'device'; patch: Partial<DeviceInfo> }
-  | { t: 'info'; text: string; level: 'error' | 'warning' | 'notice' | 'debug' }
+  | { t: 'receiver'; patch: Partial<ReceiverInfo> }                  // identity learned from the stream
+  | { t: 'info'; level: InfoLevel; text: string; origin: string }   // NMEA TXT, UBX-INF
   | { t: 'connection'; state: ConnectionState }
-  | { t: 'console'; entry: ConsoleEntry }
-  | { t: 'stats'; stats: Partial<StreamStats> };
+  | { t: 'stats'; stats: StreamStats };
+```
 
+Transport-specific device info (Android phone details, USB descriptor) is added by the sources in M3/M4. Console entries are produced from decoder frames by the Console feature (M6), not from this contract.
+
+NMEA interpretation details: GGA/RMC/GNS/VTG/GLL produce partial fix updates immediately. Consecutive GSA sentences form one used-in-fix set, emitted (with DOP) when the next non-GSA sentence arrives, which works for any sentence order. An NMEA-only receiver's TTFF is measured by the accumulator, from session start to the first position fix, until a receiver-reported TTFF (UBX NAV-STATUS, Android `onFirstFix`) replaces it.
+
+```ts
 export interface GnssSource {
   readonly kind: 'android' | 'usb' | 'replay';
   start(onEvent: (e: GnssEvent) => void): Promise<void>;

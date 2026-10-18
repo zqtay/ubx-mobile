@@ -52,6 +52,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** `src/protocols`, `src/domain` and `src/state` have ≥ 90% line coverage. Replaying each fixture log in Jest produces satellite sets that match u-center for sampled epochs.
 
+**Status (2026-10-18):** 1.1–1.6 done. 194 tests pass; coverage of the core layers is ~99% of lines and ~92% of branches, enforced in CI by per-directory thresholds (90%). Fixtures are synthetic so far (`test/helpers/fixtures.ts`: a u-blox M10-style NMEA 4.11 epoch plus every UBX message type), including fuzz tests of the decoder. **1.7 is open:** recording real BE-122 logs needs the USB-to-TTL adapter and u-center 2 on the PC. When available, add them under `test/fixtures/` and check against u-center values. Deviations from the spec: the event contract lives in `src/domain/events.ts`, the C/N0 colour scale in `src/ui/theme/cn0Scale.ts`.
+
 ### M2 — Replay source + core screens (≈ 9 units)
 
 | # | Task | Ref |

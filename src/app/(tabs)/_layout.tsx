@@ -9,6 +9,9 @@ import { useAppTheme } from '@/ui/theme/ThemeProvider';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
+// Satellites is the default tab (functional spec §1), also when the app is opened by a deep link.
+export const unstable_settings = { anchor: 'satellites' };
+
 const tabs = [
   { name: 'status', icon: 'crosshairs-gps', titleKey: 'tabs.status' },
   { name: 'satellites', icon: 'satellite-variant', titleKey: 'tabs.satellites' },
