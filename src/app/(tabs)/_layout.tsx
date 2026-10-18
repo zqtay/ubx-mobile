@@ -2,9 +2,8 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router/tabs';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert } from 'react-native';
 
-import { StatusChip } from '@/ui/components';
+import { HeaderStatusChip } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -24,20 +23,10 @@ export default function TabLayout() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
 
-  // Placeholder until the source layer exists (M2/M3); then this reads the connection state.
-  const headerRight = () => (
-    <StatusChip
-      source="none"
-      tone="idle"
-      label={t('source.none')}
-      onPress={() => Alert.alert(t('source.chooseTitle'), t('source.comingSoon'))}
-    />
-  );
-
   return (
     <Tabs
       screenOptions={{
-        headerRight,
+        headerRight: () => <HeaderStatusChip />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
       }}>

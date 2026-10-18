@@ -30,6 +30,9 @@ describe.each(schemes)('%s palette meets WCAG AA (REQ-NFR-07)', (scheme) => {
     ['text on infoBg', c.text, c.infoBg],
     ['text on warningBg', c.text, c.warningBg],
     ['text on dangerBg', c.text, c.dangerBg],
+    // Used satellite rows are tinted with infoBg and may show muted captions.
+    ['textMuted on infoBg', c.textMuted, c.infoBg],
+    ['primary on bg', c.primary, c.bg],
   ])('%s', (_name, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA);
   });

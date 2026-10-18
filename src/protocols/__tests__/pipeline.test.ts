@@ -53,7 +53,7 @@ describe('ProtocolPipeline + GnssAccumulator', () => {
 
     expect(snap.device.receiver).toMatchObject({
       vendor: 'u-blox',
-      module: 'MIA-M10Q',
+      fwVersion: 'SPG 5.10',
       protocolVersion: '34.10',
       uniqueId: 'DEADBEEF01',
       ubxDetected: true,

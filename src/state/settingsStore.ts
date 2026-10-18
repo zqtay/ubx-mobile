@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { Constellation } from '@/domain/types';
+
+import type { SatelliteSort } from './selectors';
 import { zustandStorage } from './storage';
 
 /** Settings catalogue (functional spec §9). */
@@ -22,6 +25,16 @@ export interface UsbSettings {
   setDtrRts: boolean;
 }
 
+/** Satellite list/sky filter, shared by both screens (REQ-SAT-07). */
+export interface SatelliteFilterSettings {
+  /** Empty = all constellations. */
+  constellations: Constellation[];
+  usedOnly: boolean;
+  hasSignalOnly: boolean;
+}
+
+export type SourceChoiceSetting = 'phone' | 'usb' | 'demo';
+
 export interface Settings {
   theme: ThemePreference;
   svLabelStyle: SvLabelStyle;
@@ -35,6 +48,10 @@ export interface Settings {
   skyLabels: boolean;
   skyTrails: SkyTrails;
   usb: UsbSettings;
+  /** Last started source, restarted on launch (REQ-SRC-04). */
+  lastSource: SourceChoiceSetting | undefined;
+  satelliteSort: SatelliteSort;
+  satelliteFilter: SatelliteFilterSettings;
 }
 
 export const defaultSettings: Settings = {
@@ -55,11 +72,15 @@ export const defaultSettings: Settings = {
     ubxMode: 'poll',
     setDtrRts: true,
   },
+  lastSource: undefined,
+  satelliteSort: 'sv',
+  satelliteFilter: { constellations: [], usedOnly: false, hasSignalOnly: false },
 };
 
 export interface SettingsActions {
-  update: (patch: Partial<Omit<Settings, 'usb'>>) => void;
+  update: (patch: Partial<Omit<Settings, 'usb' | 'satelliteFilter'>>) => void;
   updateUsb: (patch: Partial<UsbSettings>) => void;
+  updateSatelliteFilter: (patch: Partial<SatelliteFilterSettings>) => void;
   reset: () => void;
 }
 
@@ -67,7 +88,7 @@ export type SettingsState = Settings & SettingsActions;
 
 export const SETTINGS_STORAGE_KEY = 'settings';
 /** Bump when the persisted shape changes, and handle the old version in `migrateSettings`. */
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 /**
  * Upgrades persisted settings from any earlier schema version and fills in
@@ -79,6 +100,10 @@ export function migrateSettings(persisted: unknown, _fromVersion: number): Setti
     ...defaultSettings,
     ...pickKnown(p, defaultSettings),
     usb: { ...defaultSettings.usb, ...pickKnown(p.usb ?? {}, defaultSettings.usb) },
+    satelliteFilter: {
+      ...defaultSettings.satelliteFilter,
+      ...pickKnown(p.satelliteFilter ?? {}, defaultSettings.satelliteFilter),
+    },
   };
   return merged;
 }
@@ -97,13 +122,21 @@ export const useSettings = create<SettingsState>()(
       ...defaultSettings,
       update: (patch) => set(patch),
       updateUsb: (patch) => set((s) => ({ usb: { ...s.usb, ...patch } })),
+      updateSatelliteFilter: (patch) =>
+        set((s) => ({ satelliteFilter: { ...s.satelliteFilter, ...patch } })),
       reset: () => set(defaultSettings),
     }),
     {
       name: SETTINGS_STORAGE_KEY,
       version: SETTINGS_VERSION,
       storage: createJSONStorage(() => zustandStorage),
-      partialize: ({ update: _u, updateUsb: _uu, reset: _r, ...settings }) => settings,
+      partialize: ({
+        update: _u,
+        updateUsb: _uu,
+        updateSatelliteFilter: _uf,
+        reset: _r,
+        ...settings
+      }) => settings,
       migrate: (persisted, version) => migrateSettings(persisted, version),
       merge: (persisted, current) => ({
         ...current,

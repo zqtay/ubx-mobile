@@ -20,8 +20,8 @@
 | State | **Zustand** (+ `subscribeWithSelector`) | Small and fast. Works with an imperative accumulator outside React (§7). |
 | Lists | **@shopify/flash-list** | Virtualised satellite list and console. |
 | Graphics | **react-native-svg** | Sky plot, C/N0 gauge, signal chart. Re-evaluate **@shopify/react-native-skia** if profiling shows SVG is a bottleneck (heatmap, trails). |
-| Sheets | **@gorhom/bottom-sheet** | Source sheet, satellite detail. |
-| Animation / gestures | react-native-reanimated, react-native-gesture-handler | Required by bottom-sheet. Smooth heading rotation. |
+| Sheets | Expo Router routes with `presentation: 'formSheet'` (native Android bottom sheet) | Receiver sheet (`src/app/source.tsx`) and satellite detail (`src/app/satellite/[key].tsx`). No extra library. Android form sheets have no header, so titles and close buttons are part of the content. |
+| Animation / gestures | react-native-reanimated, react-native-gesture-handler | Navigation and gestures; smooth heading rotation (M6). |
 | Persistence | **react-native-mmkv** v4 (+ `react-native-nitro-modules`) | Synchronous key-value store for settings and remembered source, used through zustand `persist` with a versioned schema. |
 | Compass heading | `expo-location` `watchHeadingAsync` | True heading. Needs location permission, which the app already has. |
 | Files / sharing | `expo-file-system`, `expo-sharing`, `expo-document-picker`, `expo-clipboard` | Logs, replay, share device info. |
@@ -88,7 +88,7 @@ Principles:
 ubx-mobile/
 ├─ src/
 │  ├─ app/                           # Expo Router routes — every file is a screen (no tests here)
-│  │  ├─ _layout.tsx                 # providers: theme, i18n, gesture root, bottom-sheet
+│  │  ├─ _layout.tsx                 # providers: theme, i18n, gesture root; sheet routes; restores last source
 │  │  ├─ index.tsx                   # redirects to the default tab
 │  │  ├─ (tabs)/
 │  │  │  ├─ _layout.tsx              # bottom tabs + header with StatusChip
@@ -123,7 +123,8 @@ ubx-mobile/
 │  │  ├─ SourceManager.ts
 │  │  ├─ android/AndroidLocationSource.ts
 │  │  ├─ usb/{UsbSerialSource,UbxClient,ReceiverDetector,AutoBaud}.ts
-│  │  └─ replay/ReplaySource.ts
+│  │  ├─ index.ts                    # app-wide SourceManager, startSource/stopSource/restoreLastSource
+│  │  └─ replay/{ReplaySource,epochs,demoLog}.ts  # log playback; demo log = simulated u-blox M10
 │  ├─ config/                        # receiver configuration (§13)
 │  │  ├─ keys/                       # CFG key database (generated tables + hand-written UI metadata)
 │  │  ├─ valCodec.ts                 # key-ID size rules, value encode/decode, VALGET/VALSET/VALDEL builders
@@ -680,6 +681,7 @@ Derived data (filtered and sorted satellite list, per-constellation counts, aver
   3. `Trails` (Should): one `Polyline` per SV from a per-key ring buffer, sampled every 10 s.
   4. `Markers`: shapes from `constellations.ts` (`circle`, `rect`, `polygon` paths precomputed per size).
   5. `Labels`: greedy placement. Try below, right, above and left of the marker, and keep the first box that does not collide with earlier boxes or the plot rim.
+- The **demo receiver** (`sources/replay/demoLog.ts`) generates a deterministic 3-minute log as a u-blox M10 would output it (NMEA 4.11 + UBX NAV-PVT/SAT/SIG/DOP/STATUS, MON-VER, SEC-UNIQID, MON-RF): 22 satellites in six constellations drifting across the sky, C/N0 rising with elevation, one unhealthy satellite, one without orbit data, one blocked, and a 3 s acquisition before the first fix. `ReplaySource` splits any log into epochs (by UBX iTOW, or NMEA time when there is no UBX; never mixed, because the clocks differ by leap seconds) and plays one epoch per second through the same `ProtocolPipeline` as USB.
 - Hit testing: one `Pressable` overlay. On press, find the nearest projected marker within 24 dp (O(n), n ≤ ~150).
 - Heading-up: `watchHeadingAsync` → low-pass filter (α = 0.2) → throttle to 10 Hz → `rot`. Labels stay upright because positions are recomputed instead of rotating the whole SVG.
 
@@ -726,7 +728,7 @@ All errors are written to a diagnostics ring log (500 entries) that the user can
 | Unit | Checksums, NMEA sentences, GSV assembly, GSA used-sets, UBX message decoders, flag decoding, satKey normalisation, signal tables, projection, cn0 scale, accumulator precedence/ageing, UbxClient channel permissions & retry logic, CFG key encoding/decoding, VALSET transaction chunking, staged-edit diffing, lock-out rules, baud-change state machine, backup/restore round-trip | Jest | ≥ 90% lines in `src/protocols`, `src/domain`, `src/state` |
 | Fuzz | StreamDecoder with random bytes, truncated and corrupted frames, interleaved NMEA/UBX/RTCM | Jest + `fast-check` | No exceptions. Valid frames inside noise are all recovered |
 | Component | SatelliteRow states, SkyPlot marker placement, Device cards with missing fields | @testing-library/react-native | Key states covered |
-| E2E | Launch → Replay sample log → verify Status/Satellites/Sky/Device content, filter/sort, rotation | Maestro on emulator | Runs in CI |
+| E2E | Launch → demo receiver → verify Status/Satellites/Sky/Device content, filter/sort, rotation (`e2e/demo-receiver.yaml`). Builds for E2E set `EXPO_PUBLIC_DEMO_SOURCE=1` so the demo receiver is offered outside development builds | Maestro on emulator | Runs in CI |
 | Hardware | Matrix in the implementation plan (phones × receivers × drivers) | Manual checklist | Before each release |
 
 **Fixtures:**

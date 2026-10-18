@@ -52,7 +52,7 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** `src/protocols`, `src/domain` and `src/state` have ≥ 90% line coverage. Replaying each fixture log in Jest produces satellite sets that match u-center for sampled epochs.
 
-**Status (2026-10-18):** 1.1–1.6 done. 194 tests pass; coverage of the core layers is ~99% of lines and ~92% of branches, enforced in CI by per-directory thresholds (90%). Fixtures are synthetic so far (`test/helpers/fixtures.ts`: a u-blox M10-style NMEA 4.11 epoch plus every UBX message type), including fuzz tests of the decoder. **1.7 is open:** recording real BE-122 logs needs the USB-to-TTL adapter and u-center 2 on the PC. When available, add them under `test/fixtures/` and check against u-center values. Deviations from the spec: the event contract lives in `src/domain/events.ts`, the C/N0 colour scale in `src/ui/theme/cn0Scale.ts`.
+**Status (2026-10-18):** 1.1–1.6 done. 194 tests pass; coverage of the core layers is ~99% of lines and ~92% of branches, enforced in CI by per-directory thresholds (90%). Fixtures are synthetic so far (`test/helpers/fixtures.ts`: a u-blox M10-style NMEA 4.11 epoch plus every UBX message type), including fuzz tests of the decoder. **1.7 partly done:** the BE-122's configuration dump (`docs/examples/be-122-dump.txt`, u-center 2) provides a real MON-VER, now a fixture (`test/fixtures/be122.ts`) that the decoder and the demo receiver match byte for byte; it showed the module reports no `MOD=` line. Its CFG-VALGET pages are the factory reference for M5b. Still open: a recorded navigation log (NMEA + NAV-PVT/SAT/SIG) from the BE-122. Deviations from the spec: the event contract lives in `src/domain/events.ts`, the C/N0 colour scale in `src/ui/theme/cn0Scale.ts`.
 
 ### M2 — Replay source + core screens (≈ 9 units)
 
@@ -67,6 +67,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 | 2.7 | Component tests + first Maestro flow (Replay → check every tab). | TS §10 |
 
 **Exit:** on an emulator with the Replay source, all three screens show correct data and update smoothly. A design review of phone portrait layouts against the reference screenshots is done.
+
+**Status (2026-10-18):** 2.1–2.7 implemented; 231 tests pass (unit, replay, and screen tests that render the real router with demo data). Beyond the plan: a basic Device screen (receiver identity, GNSS support, antenna/RF, protocols, stream stats, info messages) because the data already exists; settings schema v2 (satellite sort/filter, remembered source). **Not yet verified on a device:** the screens, sheets and Maestro flow (`e2e/demo-receiver.yaml`) still need a run on the phone/emulator, and the design review against the reference screenshots is pending. New native libraries (react-native-svg, FlashList, expo-clipboard) require rebuilding the development build (`npm run android`).
 
 ### M3 — Phone GNSS source (≈ 6 units)
 

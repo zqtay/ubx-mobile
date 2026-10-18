@@ -1,0 +1,178 @@
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+
+import { stopSource } from '@/sources';
+import { emptySnapshot, useGnssStore } from '@/state/gnssStore';
+import { useSettings } from '@/state/settingsStore';
+
+import { demoSnapshot } from '../../test/helpers/demo';
+
+const APP = './src/app';
+
+// Rendering the full router is slow on CI and under coverage.
+jest.setTimeout(20_000);
+
+function withDemoData() {
+  useGnssStore.setState(demoSnapshot(), true);
+}
+
+beforeEach(() => {
+  useSettings.getState().reset();
+  useGnssStore.setState(emptySnapshot(), true);
+});
+
+describe('data states (functional spec §1.1)', () => {
+  it('asks for a receiver when no source is selected and opens the receiver sheet', async () => {
+    const router = await renderRouter(APP, { initialUrl: '/satellites' });
+    expect(screen.getByText('Choose a GNSS receiver')).toBeTruthy();
+    expect(screen.getByText('No receiver')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose receiver' }));
+    expect(router.getPathname()).toBe('/source');
+    expect(screen.getByTestId('source-sheet')).toBeTruthy();
+  });
+
+  it('shows a spinner while connecting and a banner when disconnected', async () => {
+    useGnssStore.setState(
+      { ...emptySnapshot(), source: 'replay', connection: { kind: 'detecting' } },
+      true,
+    );
+    await renderRouter(APP, { initialUrl: '/status' });
+    expect(screen.getByText('Waiting for data from Demo…')).toBeTruthy();
+
+    await act(async () => {
+      useGnssStore.setState(
+        { ...demoSnapshot(), connection: { kind: 'disconnected', atMs: 0 }, stale: true },
+        true,
+      );
+    });
+    expect(screen.getByText('Disconnected — showing last data')).toBeTruthy();
+    expect(screen.getByText('Demo · Disconnected')).toBeTruthy();
+  });
+});
+
+describe('Satellites screen (REQ-SAT)', () => {
+  it('lists satellites with summary, flags and the header chip', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/satellites' });
+    expect(screen.getByText('Demo · 3D FIX')).toBeTruthy();
+    expect(screen.getByTestId('satellite-summary').props.children).toMatch(
+      /^Used \d+ · Signal \d+ · View 22$/,
+    );
+    const row = screen.getByTestId('sat-row-GPS:5');
+    expect(within(row).getByText('G5')).toBeTruthy();
+    expect(within(row).getByText('EAU')).toBeTruthy();
+    // Unhealthy Galileo satellite is announced to screen readers. (The Jest list renders about
+    // nine rows, so narrow the list first.)
+    await fireEvent.press(screen.getByTestId('filter-GALILEO'));
+    expect(screen.getByTestId('sat-row-GALILEO:27').props.accessibilityLabel).toMatch(/unhealthy/);
+  });
+
+  it('filters by constellation and toggles, shared through settings (REQ-SAT-07)', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/satellites' });
+    await fireEvent.press(screen.getByTestId('filter-GALILEO'));
+    expect(useSettings.getState().satelliteFilter.constellations).toEqual(['GALILEO']);
+    expect(screen.queryByTestId('sat-row-GPS:5')).toBeNull();
+    expect(screen.getByTestId('sat-row-GALILEO:4')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('filter-used'));
+    expect(screen.queryByTestId('sat-row-GALILEO:27')).toBeNull();
+    await fireEvent.press(screen.getByTestId('filter-all'));
+    expect(useSettings.getState().satelliteFilter.constellations).toEqual([]);
+  });
+
+  it('sorts by tapping column headers (REQ-SAT-06) and switches label style', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/satellites' });
+    await fireEvent.press(screen.getByTestId('sort-cn0'));
+    expect(useSettings.getState().satelliteSort).toBe('cn0');
+    expect(screen.getByTestId('sort-cn0').props.accessibilityState).toEqual({ selected: true });
+    await act(async () => useSettings.getState().update({ svLabelStyle: 'rinex' }));
+    expect(screen.getByText('J02')).toBeTruthy();
+  });
+
+  it('opens the satellite detail with NAV-SAT fields and signals (REQ-SAT-04)', async () => {
+    withDemoData();
+    const router = await renderRouter(APP, { initialUrl: '/satellites' });
+    await fireEvent.press(screen.getByTestId('filter-BEIDOU'));
+    await fireEvent.press(screen.getByTestId('sat-row-BEIDOU:6'));
+    expect(router.getPathname()).toBe('/satellite/BEIDOU:6');
+    const detail = screen.getByTestId('satellite-detail');
+    expect(within(detail).getByText('B6  BeiDou 6')).toBeTruthy();
+    expect(within(detail).getByLabelText('Ephemeris: Yes')).toBeTruthy();
+    expect(within(detail).getByLabelText('Orbit source: Ephemeris')).toBeTruthy();
+    expect(within(detail).getByText('B1I D1')).toBeTruthy();
+    expect(within(detail).getByText('B1C')).toBeTruthy();
+    expect(within(detail).getByText('UBX-NAV-SAT')).toBeTruthy();
+  });
+
+  it('shows a message when a detail satellite disappears', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/satellite/GPS:99' });
+    expect(screen.getByText('This satellite is no longer reported.')).toBeTruthy();
+  });
+});
+
+describe('Sky screen (REQ-SKY)', () => {
+  it('draws the plot, gauge and legend and notes satellites without position', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/sky' });
+    expect(screen.getByTestId('sky-plot').props.accessibilityLabel).toMatch(
+      /^Sky plot with \d+ satellites$/,
+    );
+    expect(screen.getByTestId('cn0-gauge').props.accessibilityLabel).toMatch(
+      /Avg C\/N0: In view \d+\.\d, Used \d+\.\d dB-Hz/,
+    );
+    expect(screen.getByText('1 satellites without a known position are not shown.')).toBeTruthy();
+    expect(screen.getByText('Legend')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Legend' }));
+    expect(screen.queryByText('Used in fix')).toBeNull();
+  });
+});
+
+describe('Status screen (REQ-POS-01)', () => {
+  it('shows fix, position, DOP, time and TTFF', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/status' });
+    expect(screen.getByText('3D FIX', { exact: true })).toBeTruthy();
+    expect(screen.getByText('TTFF 3.2 s')).toBeTruthy();
+    expect(screen.getByLabelText(/^Latitude: 1\.35208\d{2}° N$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^PDOP \d\.\d\d$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^UTC: 2026-10-18 11:39:09\.000$/)).toBeTruthy();
+  });
+});
+
+describe('Device screen (REQ-DEV)', () => {
+  it('shows receiver identity, antenna and stream statistics', async () => {
+    withDemoData();
+    await renderRouter(APP, { initialUrl: '/device' });
+    expect(screen.getByLabelText('Module: —')).toBeTruthy(); // the BE-122 reports no MOD=
+    expect(screen.getByLabelText('Firmware: SPG 5.10')).toBeTruthy();
+    expect(screen.getByLabelText('Protocol version: 34.10')).toBeTruthy();
+    expect(screen.getByLabelText('Unique chip ID: 9A3C5107E2')).toBeTruthy();
+    expect(screen.getByLabelText('Antenna status: OK')).toBeTruthy();
+    expect(screen.getByLabelText('NMEA version: 4.10+')).toBeTruthy();
+    expect(screen.getByText('u-blox AG - www.u-blox.com')).toBeTruthy();
+  });
+});
+
+describe('Receiver sheet (functional spec §2)', () => {
+  afterEach(async () => {
+    await act(async () => stopSource());
+  });
+
+  it('starts the demo receiver, remembers it and disconnects', async () => {
+    // Real timers: the replay publishes its first epoch as soon as it starts.
+    await renderRouter(APP, { initialUrl: '/source' });
+    expect(screen.getByTestId('source-phone').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await fireEvent.press(screen.getByTestId('source-demo'));
+    // Building the 3-minute demo log can take a while under coverage instrumentation.
+    await waitFor(() => expect(useGnssStore.getState().source).toBe('replay'), { timeout: 10_000 });
+    expect(useSettings.getState().lastSource).toBe('demo');
+
+    await act(async () => stopSource());
+    expect(useGnssStore.getState().source).toBeNull();
+    expect(useSettings.getState().lastSource).toBeUndefined();
+  });
+});

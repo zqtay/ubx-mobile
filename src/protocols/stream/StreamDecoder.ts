@@ -3,10 +3,16 @@ import type { StreamStats } from '@/domain/types';
 import { crc24q } from '../rtcm/crc24q';
 import { ubxChecksum } from '../ubx/checksum';
 
+interface FrameBase {
+  rxMs: number;
+  /** Absolute stream offset just past the frame's last byte (counted since construction/reset). */
+  endOffset: number;
+}
+
 export type DecodedFrame =
-  | { kind: 'nmea'; text: string; rxMs: number }
-  | { kind: 'ubx'; cls: number; id: number; payload: Uint8Array; rxMs: number }
-  | { kind: 'rtcm3'; messageType: number; length: number; rxMs: number };
+  | ({ kind: 'nmea'; text: string } & FrameBase)
+  | ({ kind: 'ubx'; cls: number; id: number; payload: Uint8Array } & FrameBase)
+  | ({ kind: 'rtcm3'; messageType: number; length: number } & FrameBase);
 
 /** Longest NMEA sentence accepted, including `$` and CR/LF (u-blox PUBX can exceed 82). */
 export const MAX_NMEA_LENGTH = 200;
@@ -49,6 +55,8 @@ export class StreamDecoder {
   private buf = new Uint8Array(64 * 1024);
   private start = 0;
   private end = 0;
+  /** Absolute stream offset of `buf[start]`. */
+  private absStart = 0;
   readonly stats: StreamStats = emptyStreamStats();
 
   /** Feeds a chunk and returns every complete frame it finishes. */
@@ -68,9 +76,12 @@ export class StreamDecoder {
       if (step.status === 'frame') {
         frames.push(step.frame);
         this.start += step.consumed;
+        this.absStart += step.consumed;
+        step.frame.endOffset = this.absStart;
         this.stats.lastFrameMs = rxMs;
       } else {
         this.start += 1;
+        this.absStart += 1;
         this.stats.junkBytes += 1;
       }
     }
@@ -83,6 +94,7 @@ export class StreamDecoder {
   }
 
   reset(): void {
+    this.absStart = 0;
     this.start = 0;
     this.end = 0;
   }
@@ -151,7 +163,11 @@ export class StreamDecoder {
     }
     if (text.length < 6) return { status: 'invalid' };
     this.stats.nmeaFrames += 1;
-    return { status: 'frame', frame: { kind: 'nmea', text, rxMs }, consumed: lf + 1 - start };
+    return {
+      status: 'frame',
+      frame: { kind: 'nmea', text, rxMs, endOffset: 0 },
+      consumed: lf + 1 - start,
+    };
   }
 
   private tryUbx(rxMs: number): Step {
@@ -179,6 +195,7 @@ export class StreamDecoder {
         id: buf[start + 3],
         payload: buf.slice(start + 6, start + 6 + len),
         rxMs,
+        endOffset: 0,
       },
       consumed: total,
     };
@@ -202,7 +219,7 @@ export class StreamDecoder {
     const messageType = (buf[start + 3] << 4) | (buf[start + 4] >> 4);
     return {
       status: 'frame',
-      frame: { kind: 'rtcm3', messageType, length: len, rxMs },
+      frame: { kind: 'rtcm3', messageType, length: len, rxMs, endOffset: 0 },
       consumed: total,
     };
   }

@@ -1,0 +1,60 @@
+# Maestro flow (technical spec §10): drive every main screen with the deterministic demo receiver.
+# Build with EXPO_PUBLIC_DEMO_SOURCE=1 so the demo receiver is offered outside development builds.
+# Run: maestro test e2e/demo-receiver.yaml
+appId: com.ubxmobile.app
+---
+- launchApp:
+    clearState: true
+
+# No receiver yet → choose the demo receiver.
+- assertVisible: 'Choose a GNSS receiver'
+- tapOn: 'Choose receiver'
+- tapOn:
+    id: 'source-demo'
+
+# The demo acquires a fix after ~3 s.
+- extendedWaitUntil:
+    visible: 'Demo · 3D FIX'
+    timeout: 15000
+
+# Satellites: list, sort, filter, detail.
+- assertVisible:
+    id: 'satellite-list'
+- tapOn:
+    id: 'sort-cn0'
+- tapOn:
+    id: 'filter-GALILEO'
+- assertVisible:
+    id: 'sat-row-GALILEO:4'
+- tapOn:
+    id: 'sat-row-GALILEO:4'
+- assertVisible:
+    id: 'satellite-detail'
+- back
+- tapOn:
+    id: 'filter-all'
+
+# Sky, Status, Device.
+- tapOn: 'Sky'
+- assertVisible:
+    id: 'sky-plot'
+- assertVisible:
+    id: 'cn0-gauge'
+- tapOn: 'Status'
+- assertVisible:
+    id: 'fix-banner'
+- assertVisible: '3D FIX'
+- tapOn: 'Device'
+- assertVisible: 'SPG 5.10'
+
+# Rotation: the sky view switches to the side-by-side layout.
+- setOrientation: LANDSCAPE
+- tapOn: 'Sky'
+- assertVisible:
+    id: 'sky-plot'
+- setOrientation: PORTRAIT
+
+# Disconnect returns to the empty state.
+- tapOn: 'Demo · 3D FIX'
+- tapOn: 'Disconnect'
+- assertVisible: 'Choose a GNSS receiver'

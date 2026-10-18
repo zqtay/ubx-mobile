@@ -299,13 +299,18 @@ describe('interpretUbx (technical spec §6.5)', () => {
       hwVersion: '000A0000',
       fwVersion: 'SPG 5.10',
       protocolVersion: '34.10',
-      module: 'MIA-M10Q',
       gnssSupported: ['GPS', 'GLONASS', 'GALILEO', 'BEIDOU', 'SBAS', 'QZSS'],
     });
     const plain = ofType(
       run(monVer('1.00 (59842)', '00070000', ['PROTVER 14.00', 'GPS;SBAS;GLO;QZSS', 'odd;tokens'])),
       'receiver',
     )[0].patch;
+    expect(patch.module).toBeUndefined();
+    const withModule = ofType(
+      run(monVer('ROM BASE', '00190000', ['FWVER=HPG 1.32', 'MOD=ZED-F9P'])),
+      'receiver',
+    )[0].patch;
+    expect(withModule.module).toBe('ZED-F9P');
     expect(plain.fwVersion).toBeUndefined();
     expect(plain.gnssSupported).toEqual(['GPS', 'SBAS', 'GLONASS', 'QZSS']);
   });
