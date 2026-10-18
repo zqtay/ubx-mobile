@@ -1,4 +1,5 @@
 import type {
+  AndroidDeviceInfo,
   ConnectionState,
   Constellation,
   Dop,
@@ -44,6 +45,8 @@ export type GnssEvent =
   /** Time to first fix as reported by the receiver / OS. */
   | { t: 'ttff'; ms: number }
   | { t: 'receiver'; patch: Partial<ReceiverInfo> }
+  /** Phone details from the Android source. */
+  | { t: 'android'; patch: Partial<AndroidDeviceInfo> }
   | { t: 'info'; level: InfoLevel; text: string; origin: string }
   | { t: 'connection'; state: ConnectionState }
   | { t: 'stats'; stats: StreamStats };

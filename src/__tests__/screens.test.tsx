@@ -2,6 +2,7 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-rout
 
 import { stopSource } from '@/sources';
 import { emptySnapshot, useGnssStore } from '@/state/gnssStore';
+import { GnssAccumulator } from '@/state/GnssAccumulator';
 import { useSettings } from '@/state/settingsStore';
 
 import { demoSnapshot } from '../../test/helpers/demo';
@@ -10,6 +11,40 @@ const APP = './src/app';
 
 // Rendering the full router is slow on CI and under coverage.
 jest.setTimeout(20_000);
+
+/** A phone-source snapshot as the Android source would build it. */
+function phoneSnapshot() {
+  let t = 0;
+  const acc = new GnssAccumulator({ satelliteTimeoutMs: 60_000, now: () => t });
+  acc.start('android');
+  acc.applyAll([
+    {
+      t: 'android',
+      patch: {
+        manufacturer: 'samsung',
+        model: 'SM-A536E',
+        androidRelease: '14',
+        sdkInt: 34,
+        fingerprint: 'samsung/a53x',
+        hasGnssFeature: true,
+        gnssHardwareModelName: 'BCM4775 MSG',
+        capabilities: { measurements: true },
+        observed: {
+          constellations: ['GPS'],
+          bands: ['L1', 'L5'],
+          dualFrequency: true,
+          nmeaOutput: true,
+          maxSvUsed: 9,
+        },
+        locationUpdates: 3,
+        statusUpdates: 4,
+      },
+    },
+    { t: 'connection', state: { kind: 'receiving' } },
+  ]);
+  t = 1;
+  return acc.snapshot();
+}
 
 function withDemoData() {
   useGnssStore.setState(demoSnapshot(), true);
@@ -152,6 +187,37 @@ describe('Device screen (REQ-DEV)', () => {
     expect(screen.getByLabelText('Antenna status: OK')).toBeTruthy();
     expect(screen.getByLabelText('NMEA version: 4.10+')).toBeTruthy();
     expect(screen.getByText('u-blox AG - www.u-blox.com')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share device info' })).toBeTruthy();
+  });
+
+  it('shows phone details for the phone source (REQ-DEV-02)', async () => {
+    useGnssStore.setState(phoneSnapshot(), true);
+    await renderRouter(APP, { initialUrl: '/device' });
+    expect(screen.getByLabelText('Model: SM-A536E')).toBeTruthy();
+    expect(screen.getByLabelText('Android: 14 (API 34)')).toBeTruthy();
+    expect(screen.getByLabelText('Hardware model: BCM4775 MSG')).toBeTruthy();
+    expect(screen.getByLabelText('Year of hardware: Not reported by device')).toBeTruthy();
+    expect(screen.getByLabelText('Raw measurements: Yes')).toBeTruthy();
+    expect(screen.getByLabelText('Dual-frequency: Yes')).toBeTruthy();
+    expect(screen.getByLabelText('Signal bands: L1, L5')).toBeTruthy();
+    expect(screen.queryByText('Receiver')).toBeNull();
+  });
+});
+
+describe('error banners (functional spec §10)', () => {
+  it.each([
+    ['E_PROVIDER_DISABLED', 'Turn on location'],
+    ['E_PERMISSION', 'Allow location'],
+    ['E_IO', 'Retry'],
+  ] as const)('offers the right action for %s', async (code, action) => {
+    useGnssStore.setState(
+      { ...phoneSnapshot(), connection: { kind: 'error', code, message: 'Something is wrong.' } },
+      true,
+    );
+    await renderRouter(APP, { initialUrl: '/status' });
+    expect(screen.getByText('Something is wrong.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: action })).toBeTruthy();
+    expect(screen.getByText('Phone · Error')).toBeTruthy();
   });
 });
 
@@ -164,6 +230,9 @@ describe('Receiver sheet (functional spec §2)', () => {
     // Real timers: the replay publishes its first epoch as soon as it starts.
     await renderRouter(APP, { initialUrl: '/source' });
     expect(screen.getByTestId('source-phone').props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
+    expect(screen.getByTestId('source-usb').props.accessibilityState).toMatchObject({
       disabled: true,
     });
     await fireEvent.press(screen.getByTestId('source-demo'));

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import type MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
+import type { SourceErrorCode } from '@/domain/types';
+import { errorActionKind, runErrorAction } from '@/sources';
 import { useGnssStore } from '@/state/gnssStore';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
@@ -21,6 +23,10 @@ export interface DataGateProps {
 
 export function openReceiverSheet(): void {
   router.push('/source');
+}
+
+async function handleError(code: SourceErrorCode): Promise<void> {
+  if (!(await runErrorAction(code))) openReceiverSheet();
 }
 
 /**
@@ -72,8 +78,8 @@ export function DataGate({ icon, placeholder, children }: DataGateProps) {
           <Banner
             tone="danger"
             message={connection.message}
-            actionLabel={t('dataState.retry')}
-            onAction={openReceiverSheet}
+            actionLabel={t(`dataState.${errorActionKind(connection.code)}`)}
+            onAction={() => void handleError(connection.code)}
           />
         </View>
       ) : null}

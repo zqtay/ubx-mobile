@@ -36,13 +36,19 @@
       "waiting": "No data",
       "disconnected": "Disconnected",
       "error": "Error"
-    }
+    },
+    "rationaleTitle": "Location permission",
+    "rationaleBody": "UBX Mobile needs precise location to read satellite data from your phone's GNSS receiver. Location never leaves your device.",
+    "rationaleContinue": "Continue",
+    "cancel": "Cancel"
   },
   "dataState": {
     "waiting": "Waiting for data from {{source}}…",
     "stale": "Disconnected — showing last data",
     "reconnect": "Reconnect",
-    "retry": "Retry"
+    "retry": "Retry",
+    "allowLocation": "Allow location",
+    "turnOnLocation": "Turn on location"
   },
   "fix": {
     "none": "NO FIX",
@@ -56,11 +62,22 @@
     "rtkFixed": "RTK FIXED"
   },
   "screens": {
-    "status": { "placeholder": "Position, time and fix quality will appear here." },
-    "satellites": { "placeholder": "The satellite list will appear here." },
-    "sky": { "placeholder": "The sky view will appear here." },
-    "device": { "placeholder": "Receiver identity and capabilities will appear here." },
-    "console": { "title": "Console", "placeholder": "The live message stream will appear here." }
+    "status": {
+      "placeholder": "Position, time and fix quality will appear here."
+    },
+    "satellites": {
+      "placeholder": "The satellite list will appear here."
+    },
+    "sky": {
+      "placeholder": "The sky view will appear here."
+    },
+    "device": {
+      "placeholder": "Receiver identity and capabilities will appear here."
+    },
+    "console": {
+      "title": "Console",
+      "placeholder": "The live message stream will appear here."
+    }
   },
   "satellites": {
     "summary": "Used {{used}} · Signal {{signal}} · View {{view}}",
@@ -108,7 +125,11 @@
     "yes": "Yes",
     "no": "No",
     "none": "None",
-    "healthValue": { "healthy": "Healthy", "unhealthy": "Unhealthy", "unknown": "Unknown" },
+    "healthValue": {
+      "healthy": "Healthy",
+      "unhealthy": "Unhealthy",
+      "unknown": "Unknown"
+    },
     "orbitValue": {
       "none": "None",
       "ephemeris": "Ephemeris",
@@ -165,7 +186,11 @@
     "courseAcc": "Course accuracy",
     "quality": "Quality",
     "carrier": "Carrier solution",
-    "carrierValue": { "none": "None", "float": "RTK float", "fixed": "RTK fixed" },
+    "carrierValue": {
+      "none": "None",
+      "float": "RTK float",
+      "fixed": "RTK fixed"
+    },
     "time": "Time",
     "utc": "UTC",
     "local": "Local",
@@ -210,7 +235,43 @@
     "errors": "Checksum errors",
     "junk": "Unrecognised bytes",
     "info": "Info messages",
-    "waiting": "waiting…"
+    "waiting": "waiting…",
+    "share": "Share device info",
+    "phone": "Phone",
+    "manufacturer": "Manufacturer",
+    "model": "Model",
+    "android": "Android",
+    "fingerprint": "Build fingerprint",
+    "gnssHardware": "GNSS hardware",
+    "hardwareModel": "Hardware model",
+    "hardwareYear": "Year of hardware",
+    "notReported": "Not reported by device",
+    "capabilities": "Capabilities",
+    "capability": {
+      "measurements": "Raw measurements",
+      "navigationMessages": "Navigation messages",
+      "lowPowerMode": "Low-power mode",
+      "satelliteBlocklist": "Satellite blocklist",
+      "measurementCorrections": "Measurement corrections",
+      "antennaInfo": "Antenna info",
+      "satellitePvt": "Satellite PVT",
+      "measurementCorrelationVectors": "Correlation vectors"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "observed": "Observed this session",
+    "constellationsSeen": "Constellations",
+    "bandsSeen": "Signal bands",
+    "dualFrequency": "Dual-frequency",
+    "nmeaOutput": "NMEA output",
+    "maxSvUsed": "Max satellites used",
+    "antennaCard": "Antenna",
+    "phaseCenter": "{{freq}} MHz phase centre",
+    "session": "Session",
+    "startedAt": "Started at",
+    "ttff": "TTFF",
+    "locationUpdates": "Location updates",
+    "statusUpdates": "Satellite status updates"
   },
   "more": {
     "console": "Console",

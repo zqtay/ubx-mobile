@@ -1,11 +1,10 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
+import { ScrollView, Share, StyleSheet, View } from 'react-native';
 
-import { constellationMeta } from '@/domain/constellations';
-import type { Constellation } from '@/domain/types';
 import { useGnssStore } from '@/state/gnssStore';
-import { AppText, Card, DataGate, KeyValueRow } from '@/ui/components';
+import { AppText, Button, Card, DataGate, KeyValueRow } from '@/ui/components';
+import { deviceReportText, deviceSections } from '@/ui/deviceSections';
 import { formatClock } from '@/ui/format';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
@@ -19,93 +18,31 @@ export default function DeviceScreen() {
   );
 }
 
-const names = (list: Constellation[] | undefined) =>
-  list?.map((c) => constellationMeta(c).name).join(', ');
-
-/**
- * Receiver identity learned from the data stream (REQ-DEV-04..06, REQ-DEV-08). Transport details
- * (Android phone info, USB descriptor) are added with their sources in M3/M4.
- */
+/** Identity and capabilities of the active source (REQ-DEV-01..08). */
 function DeviceContent() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const { receiver, stats } = useGnssStore(
-    useShallow((s) => ({ receiver: s.device.receiver, stats: s.stats })),
-  );
-  const waiting = t('device.waiting');
-  const rf = receiver.rf?.[0];
+  const snapshot = useGnssStore((s) => s);
+  const sections = useMemo(() => deviceSections(t, snapshot), [t, snapshot]);
+  const info = snapshot.device.receiver.infoMessages;
+
+  const share = () =>
+    void Share.share({ message: deviceReportText(t('app.name'), sections, Date.now()) });
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Card title={t('device.receiver')}>
-        <KeyValueRow
-          label={t('device.vendor')}
-          value={
-            receiver.vendor === 'u-blox'
-              ? 'u-blox'
-              : receiver.nmeaDetected
-                ? t('device.vendorGeneric')
-                : waiting
-          }
-        />
-        <KeyValueRow label={t('device.module')} value={receiver.module} />
-        <KeyValueRow label={t('device.hardware')} value={receiver.hwVersion} mono />
-        <KeyValueRow label={t('device.software')} value={receiver.swVersion} mono />
-        <KeyValueRow label={t('device.firmware')} value={receiver.fwVersion} mono />
-        <KeyValueRow label={t('device.protocol')} value={receiver.protocolVersion} mono />
-        <KeyValueRow label={t('device.uniqueId')} value={receiver.uniqueId} mono />
-      </Card>
-
-      {receiver.gnssSupported || receiver.gnssEnabled ? (
-        <Card title={t('device.gnss')}>
-          <KeyValueRow label={t('device.supported')} value={names(receiver.gnssSupported)} />
-          <KeyValueRow label={t('device.enabled')} value={names(receiver.gnssEnabled)} />
-          <KeyValueRow label={t('device.maxConcurrent')} value={receiver.maxConcurrentGnss} />
+      <Button variant="secondary" label={t('device.share')} onPress={share} />
+      {sections.map((section) => (
+        <Card key={section.title} title={section.title}>
+          {section.rows.map((row) => (
+            <KeyValueRow key={row.label} label={row.label} value={row.value} mono={row.mono} />
+          ))}
         </Card>
-      ) : null}
+      ))}
 
-      {rf ? (
-        <Card title={t('device.rf')}>
-          <KeyValueRow label={t('device.antenna')} value={rf.antennaStatus?.toUpperCase()} />
-          <KeyValueRow label={t('device.antennaPower')} value={rf.antennaPower?.toUpperCase()} />
-          <KeyValueRow label={t('device.jamming')} value={rf.jammingState} />
-          <KeyValueRow label={t('device.jamIndicator')} value={rf.jamIndicator} />
-          <KeyValueRow label={t('device.noise')} value={rf.noisePerMs} />
-          <KeyValueRow label={t('device.agc')} value={rf.agcPercent} unit="%" />
-        </Card>
-      ) : null}
-
-      <Card title={t('device.protocols')}>
-        <KeyValueRow
-          label={t('device.nmea')}
-          value={receiver.nmeaDetected ? t('device.detected') : t('device.notDetected')}
-        />
-        <KeyValueRow label={t('device.nmeaVersion')} value={receiver.nmeaVersion} />
-        <KeyValueRow label={t('device.talkers')} value={receiver.talkers?.join(', ')} mono />
-        <KeyValueRow
-          label={t('device.ubx')}
-          value={receiver.ubxDetected ? t('device.detected') : t('device.notDetected')}
-        />
-      </Card>
-
-      <Card title={t('device.stream')}>
-        <KeyValueRow label={t('device.bytes')} value={stats.bytes.toLocaleString()} mono />
-        <KeyValueRow
-          label={t('device.frames')}
-          value={`${stats.nmeaFrames} / ${stats.ubxFrames} / ${stats.rtcmFrames}`}
-          mono
-        />
-        <KeyValueRow
-          label={t('device.errors')}
-          value={stats.nmeaChecksumErrors + stats.ubxChecksumErrors + stats.rtcmCrcErrors}
-          mono
-        />
-        <KeyValueRow label={t('device.junk')} value={stats.junkBytes} mono />
-      </Card>
-
-      {receiver.infoMessages && receiver.infoMessages.length > 0 ? (
+      {info && info.length > 0 ? (
         <Card title={t('device.info')}>
-          {[...receiver.infoMessages]
+          {[...info]
             .reverse()
             .slice(0, 20)
             .map((m, i) => (

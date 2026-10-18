@@ -189,12 +189,51 @@ export interface ReceiverInfo {
   infoMessages?: InfoMessage[];
 }
 
+export interface AntennaInfo {
+  carrierHz: number;
+  /** Phase centre offset (mm) and its uncertainty. */
+  pcoXmm: number;
+  pcoYmm: number;
+  pcoZmm: number;
+  pcoXUncMm: number;
+  pcoYUncMm: number;
+  pcoZUncMm: number;
+}
+
+/** Phone and phone-GNSS details for the Device screen (REQ-DEV-02). */
+export interface AndroidDeviceInfo {
+  manufacturer: string;
+  model: string;
+  androidRelease: string;
+  sdkInt: number;
+  fingerprint: string;
+  hasGnssFeature: boolean;
+  /** API 28+; undefined when not reported. */
+  gnssHardwareModelName?: string;
+  gnssYearOfHardware?: number;
+  /** API 30+; only the capabilities the running API can report. */
+  capabilities?: Record<string, boolean>;
+  antennaInfos?: AntennaInfo[];
+  /** What this session has observed so far. */
+  observed: {
+    constellations: Constellation[];
+    /** Signal/band codes seen, e.g. 'L1', 'L5', 'E1', 'E5a'. */
+    bands: string[];
+    dualFrequency: boolean;
+    nmeaOutput: boolean;
+    maxSvUsed: number;
+  };
+  locationUpdates: number;
+  statusUpdates: number;
+}
+
 /**
- * Everything the Device screen shows. Transport-specific parts (Android phone info,
- * USB descriptor) are added by their sources in M3/M4.
+ * Everything the Device screen shows: receiver identity learned from the data stream plus
+ * transport-specific details added by the source (Android phone info here; USB in M4).
  */
 export interface DeviceInfo {
   receiver: ReceiverInfo;
+  android?: AndroidDeviceInfo;
 }
 
 export type SourceKind = 'android' | 'usb' | 'replay';

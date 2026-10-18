@@ -82,6 +82,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** UC-1 works on the test phones. SV count, C/N0 (±1 dB-Hz) and el/az (±1°) match GPSTest. Permission and location-off paths have been demonstrated.
 
+**Status (2026-10-18):** 3.1–3.4 implemented. The `android-gnss` Kotlin module compiles and the debug APK builds; `AndroidLocationSource`, permission flow (rationale, precise/approximate, denied/blocked → app settings), location-off handling and the Android Device screen (with Share) are covered by 253 passing tests using a fake native module. **Open:** 3.5 and the exit criteria need the phone — install the new build (`npm run android`), choose *Phone (built-in)*, and compare with GPSTest (satellite count, C/N0 ±1 dB-Hz, el/az ±1°). Also check the permission and location-off paths by hand.
+
 ### M4 — USB serial source (≈ 9 units)
 
 | # | Task | Ref |

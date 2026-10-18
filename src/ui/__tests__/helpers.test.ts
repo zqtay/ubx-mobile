@@ -15,6 +15,7 @@ import {
   formatUtc,
 } from '../format';
 import { elevationRadius, nearestPoint, placeLabels, project } from '../sky/projection';
+import { deviceReportText } from '../deviceSections';
 import { shapePath } from '../sky/shapes';
 
 describe('format (REQ-POS-03)', () => {
@@ -183,5 +184,32 @@ describe('sky projection (functional spec §5.2)', () => {
     ] as const) {
       expect(shapePath(shape, 10, 10, 5)).toMatch(/^M.*Z$/);
     }
+  });
+});
+
+describe('device report (REQ-DEV-07)', () => {
+  it('renders sections as plain text with dashes for missing values', () => {
+    const text = deviceReportText(
+      'UBX Mobile',
+      [
+        {
+          title: 'Receiver',
+          rows: [
+            { label: 'Module', value: undefined },
+            { label: 'Firmware', value: 'SPG 5.10' },
+          ],
+        },
+      ],
+      Date.UTC(2026, 9, 18, 12),
+    );
+    expect(text).toBe(
+      [
+        'UBX Mobile — 2026-10-18T12:00:00.000Z',
+        '',
+        'Receiver',
+        '  Module: —',
+        '  Firmware: SPG 5.10',
+      ].join('\n'),
+    );
   });
 });

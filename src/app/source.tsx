@@ -2,9 +2,9 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { startSource, stopSource, type SourceChoice } from '@/sources';
+import { phoneNeedsPermissionPrompt, startSource, stopSource, type SourceChoice } from '@/sources';
 import { useGnssStore } from '@/state/gnssStore';
 import { useSettings } from '@/state/settingsStore';
 import { AppText, Button } from '@/ui/components';
@@ -25,7 +25,7 @@ const OPTIONS: Option[] = [
     icon: 'cellphone',
     titleKey: 'source.phone',
     hintKey: 'source.phoneHint',
-    available: false,
+    available: true,
   },
   {
     choice: 'usb',
@@ -56,9 +56,20 @@ export default function SourceSheet() {
   const active = useGnssStore((s) => s.source);
   const lastSource = useSettings((s) => s.lastSource);
 
-  const choose = (choice: SourceChoice) => {
+  const go = (choice: SourceChoice) => {
     router.back();
     void startSource(choice);
+  };
+  // Explain why location is needed before the system dialog appears (REQ-AND-01).
+  const choose = async (choice: SourceChoice) => {
+    if (choice === 'phone' && (await phoneNeedsPermissionPrompt())) {
+      Alert.alert(t('source.rationaleTitle'), t('source.rationaleBody'), [
+        { text: t('source.cancel'), style: 'cancel' },
+        { text: t('source.rationaleContinue'), onPress: () => go(choice) },
+      ]);
+      return;
+    }
+    go(choice);
   };
   const disconnect = () => {
     router.back();
@@ -80,7 +91,7 @@ export default function SourceSheet() {
             key={o.choice}
             testID={`source-${o.choice}`}
             disabled={!o.available}
-            onPress={() => choose(o.choice)}
+            onPress={() => void choose(o.choice)}
             accessibilityRole="button"
             accessibilityState={{ disabled: !o.available, selected: isActive }}
             style={({ pressed }) => [

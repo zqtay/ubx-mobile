@@ -1,6 +1,7 @@
 import { constellationOrder } from '@/domain/constellations';
 import type { DopOrigin, FixOrigin, GnssEvent } from '@/domain/events';
 import type {
+  AndroidDeviceInfo,
   ConnectionState,
   Dop,
   Fix,
@@ -61,6 +62,7 @@ export class GnssAccumulator {
   private dopMs = 0;
   private session?: SessionInfo;
   private receiver: ReceiverInfo = {};
+  private android?: AndroidDeviceInfo;
   private stats: StreamStats = emptyStreamStats();
   /** Used set from the latest NMEA GSA batch, applied to satellites first seen afterwards. */
   private nmeaUsed = new Set<SatKey>();
@@ -85,6 +87,7 @@ export class GnssAccumulator {
     this.dopRank = 0;
     this.session = { startedAtMs: this.now() };
     this.receiver = {};
+    this.android = undefined;
     this.stats = emptyStreamStats();
     this.nmeaUsed = new Set();
     this.dirty = true;
@@ -138,6 +141,9 @@ export class GnssAccumulator {
       case 'receiver':
         this.receiver = { ...this.receiver, ...definedOnly(e.patch) };
         break;
+      case 'android':
+        this.android = { ...(this.android as AndroidDeviceInfo), ...definedOnly(e.patch) };
+        break;
       case 'info':
         this.receiver = {
           ...this.receiver,
@@ -190,7 +196,9 @@ export class GnssAccumulator {
       dop: this.dop,
       session: this.session,
       satellites,
-      device: { receiver: this.receiver },
+      device: this.android
+        ? { receiver: this.receiver, android: this.android }
+        : { receiver: this.receiver },
       stats: this.stats,
       stale: this.connection.kind === 'disconnected' || this.connection.kind === 'error',
     };

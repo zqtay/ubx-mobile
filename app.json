@@ -41,6 +41,14 @@
       ],
       "expo-asset",
       [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false,
+          "isAndroidMotionActivityEnabled": false
+        }
+      ],
+      [
         "./plugins/withCmakeVersion",
         {
           "version": "3.31.6"
