@@ -10,12 +10,12 @@
     "more": "More"
   },
   "source": {
-    "none": "No source",
-    "chooseTitle": "Choose a data source",
-    "chooseBody": "Connect to your phone's GNSS receiver or an external receiver over USB.",
-    "chooseAction": "Choose source",
-    "chipA11y": "Data source: {{label}}. Opens source selection.",
-    "comingSoon": "Source selection arrives in a later milestone."
+    "none": "No receiver",
+    "chooseTitle": "Choose a GNSS receiver",
+    "chooseBody": "Use your phone's built-in receiver or an external one connected over USB.",
+    "chooseAction": "Choose receiver",
+    "chipA11y": "GNSS receiver: {{label}}. Opens receiver selection.",
+    "comingSoon": "Receiver selection arrives in a later milestone."
   },
   "screens": {
     "status": { "placeholder": "Position, time and fix quality will appear here." },

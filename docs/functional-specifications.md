@@ -34,6 +34,8 @@ The reference screenshots in [examples/](examples/) are a guide, not a template:
 └──────────────────────────────────────────┘
 ```
 
+> **Terminology:** user-facing text calls a source a **GNSS receiver** ("Choose a GNSS receiver", "No receiver"). "GPS" is used only for the GPS constellation itself, never as a synonym for GNSS, so the wording stays consistent with the Satellites, Device and Configuration screens. This spec and the code keep the internal term **source** (Source sheet, `GnssSource`).
+
 - **Bottom tabs** (in order): `Status`, `Satellites`, `Sky`, `Device`, `More`.
 - **More** contains: **Receiver configuration** (u-blox only, §11), Console, Signal chart (if not on the Satellites screen), Recording (Could), Settings, Help, About.
 - **Source status chip** (header, top-right, every main screen): source icon (📱 phone / 🔌 USB / ▶ replay) + short state text, e.g. `USB · 3D Fix`, `Phone · No fix`, `USB · Disconnected`. Tapping it opens the **Source sheet** (§2).
@@ -49,7 +51,7 @@ Every data screen (Status, Satellites, Sky, Device) handles these states the sam
 
 | State | Display |
 |---|---|
-| No source selected | Empty illustration + "Choose a data source" + **[Choose source]** button. |
+| No source selected | Empty illustration + "Choose a GNSS receiver" + "Use your phone's built-in receiver or an external one connected over USB." + **[Choose receiver]** button. Header chip: `No receiver`. |
 | Connecting / waiting for first data | Spinner + "Waiting for data from <source>…" + elapsed seconds. After 10 s (USB): hint "No data received. Check baud rate or cable." with **[Change baud]**. |
 | Receiving, no satellites yet | Normal screen with zeroed counters, and "Searching for satellites…" in the list or sky area. |
 | Receiving | Normal content. |
@@ -64,11 +66,10 @@ A bottom sheet (full screen on small phones) opened from the status chip or on f
 
 ```
 ┌──────────────────────────────────────────┐
-│ Data source                          ✕   │
+│ Choose a GNSS receiver               ✕   │
 ├──────────────────────────────────────────┤
-│ ◉ 📱 Phone GNSS                          │
-│      Built-in receiver via Android       │
-│      Location API                        │
+│ ◉ 📱 Phone (built-in)                    │
+│      Your phone's built-in receiver      │
 │                                          │
 │ ○ 🔌 USB receiver                        │
 │   ┌────────────────────────────────────┐ │
@@ -89,7 +90,7 @@ A bottom sheet (full screen on small phones) opened from the status chip or on f
 
 Behaviour:
 
-1. **Phone GNSS**
+1. **Phone (built-in)**
    1. On **Connect**: if location permission is missing → rationale dialog ("UBX Mobile needs precise location to read satellite data from your phone's GNSS receiver. Location never leaves your device.") → system permission prompt.
    2. If the user grants only *approximate* location → explain that precise location is needed, and offer **[Open app settings]**.
    3. If system location is off → dialog **[Turn on location]** (opens system location settings).
