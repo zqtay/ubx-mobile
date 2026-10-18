@@ -15,6 +15,7 @@ Specifications live in [docs/](docs/):
 - JDK 17–21 (Android Studio's bundled JBR works: set `JAVA_HOME` to `<Android Studio>/jbr`)
 - Android SDK (`ANDROID_HOME`, typically `%LOCALAPPDATA%\Android\Sdk` on Windows)
 - An Android device with USB debugging enabled (Android 8.0 / API 26 or newer)
+- Windows only: long paths enabled (`LongPathsEnabled = 1`). The build pins CMake 3.31.6 (`plugins/withCmakeVersion.js`) because the default CMake 3.22.1 fails on long paths. Gradle installs it if missing; see the technical spec §12.
 
 The app uses custom native code, so it runs in a **development build**, not Expo Go.
 
@@ -33,6 +34,11 @@ The app uses custom native code, so it runs in a **development build**, not Expo
 
 `android/` is generated (Continuous Native Generation) and not committed — configure native behaviour through `app.json` and config plugins.
 
+### Troubleshooting
+
+- **"Gradle requires JVM 17 or later"**: point `JAVA_HOME` at a JDK 17+, e.g. `set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr`.
+- **White screen / stuck on "Connecting to development server"**: the phone can't reach Metro over Wi-Fi (firewall, different network, or the PC has several network adapters). Over USB, run `adb reverse tcp:8081 tcp:8081`, then in the dev launcher choose *Enter URL manually* → `http://127.0.0.1:8081`. Don't start Metro with `--localhost`: on Windows it then listens on IPv6 only and the USB forward can't reach it. For Wi-Fi, allow Node.js through Windows Firewall on a Private network and set `REACT_NATIVE_PACKAGER_HOSTNAME` to the PC's Wi-Fi IP before `npm start`.
+
 ## Project layout
 
 ```
@@ -45,4 +51,5 @@ src/
     components/   Shared UI building blocks
     theme/        Design tokens, light/dark theme provider
   __tests__/      Screen-level tests (kept out of src/app so they are not routes)
+plugins/          Expo config plugins (native project tweaks applied at prebuild)
 ```

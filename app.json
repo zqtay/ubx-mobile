@@ -39,7 +39,13 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "./plugins/withCmakeVersion",
+        {
+          "version": "3.31.6"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

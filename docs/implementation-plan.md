@@ -36,7 +36,7 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** the app installs on a phone, tabs navigate, the theme switches, CI is green.
 
-**Status (2026-10-18):** 0.1, 0.3–0.7 done (typecheck, lint and 45 tests pass). 0.2 is blocked: the Android build fails on the Windows 260-character path limit (TS §12) until the project moves to a shorter path. The on-device check is still pending.
+**Status (2026-10-18): done.** Typecheck, lint and 45 tests pass. The debug build (arm64-v8a, with CMake 3.31.6 pinned to get around the Windows path-length limit, TS §12) runs on the test phone over USB: tabs and the dark theme render. Dev setup notes: Gradle needs JDK 17+ (`JAVA_HOME` → Android Studio JBR). If the phone can't reach the PC over Wi-Fi, load Metro over USB with `adb reverse tcp:8081 tcp:8081` and `http://127.0.0.1:8081`.
 
 ### M1 — Domain model & protocol layer (≈ 8 units)
 
@@ -247,6 +247,6 @@ M3 (Kotlin GNSS module) can start in parallel with M2 if a second developer is a
 
 ## 7. Next steps
 
-1. Move the project to a short path so the Android build works (TS §12), then finish M0.2 on the phone.
+1. Connect the phone (USB debugging on) and run `npm run android` to finish M0.2.
 2. Get a USB-to-TTL adapter (CP2102 and/or CH340) and an OTG cable (§4.2).
 3. Before any configuration testing, record a full configuration dump of the BE-122 in u-center 2 as the "factory" reference (M5b.1).
