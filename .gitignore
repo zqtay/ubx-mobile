@@ -1,0 +1,69 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# generated native folders (Continuous Native Generation: `npm run prebuild`)
+/ios
+/android
+
+# Android / Gradle build output (also for local Expo modules in modules/*/android)
+.gradle/
+build/
+.cxx/
+.externalNativeBuild/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+
+# signing keys and credentials — never commit (back up the release keystore separately)
+*.keystore
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+google-services.json
+
+# Kotlin
+.kotlin/
+
+# IDEs
+.idea/
+*.iml
+
+# Metro
+.metro-health-check*
+
+# logs and debug
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# test output
+coverage/
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# merge leftovers
+*.orig.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
