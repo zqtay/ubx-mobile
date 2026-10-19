@@ -17,6 +17,7 @@ import {
   useConfigLoader,
 } from '@/ui/config/ConfigParts';
 import { sectionSummary, unavailableMessage } from '@/ui/config/labels';
+import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
@@ -35,6 +36,8 @@ export default function ConfigOverviewScreen() {
   const def = useConfigStore((s) => s.def);
   const staged = useConfigStore((s) => s.staged);
   const busy = useConfigStore((s) => s.busy);
+  // The staged-changes bar handles the navigation bar inset when it is shown.
+  const bottom = useBottomInset(staged.size > 0 || !!busy);
   const unsaved = useMemo(
     () => new Set(unsavedKeys({ ram, bbr, flash, def })),
     [ram, bbr, flash, def],
@@ -79,7 +82,7 @@ export default function ConfigOverviewScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
         {availability !== 'ok' ? (
           <Banner tone="info" message={unavailableMessage(t, availability)} />
         ) : null}
@@ -103,7 +106,7 @@ export default function ConfigOverviewScreen() {
               </AppText>
             </Card>
 
-            <Card title={t('config.sections')} style={styles.listCard}>
+            <Card title={t('config.sections')} flush>
               {SECTIONS.filter((s) => availableSettings(s, port, ram).length > 0).map((s, i) => {
                 const keys = availableSettings(s, port, ram).map((x) => x.key);
                 const values = new Map([...ram, ...staged]);
@@ -144,7 +147,7 @@ export default function ConfigOverviewScreen() {
               </View>
             </Card>
 
-            <Card title={t('config.actions')} style={styles.listCard}>
+            <Card title={t('config.actions')} flush>
               <ListItem
                 icon="content-save-outline"
                 title={t('config.save.label')}
@@ -200,11 +203,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.md,
-  },
-  listCard: {
-    paddingHorizontal: 0,
-    gap: 0,
-    overflow: 'hidden',
   },
   divider: {
     height: StyleSheet.hairlineWidth,

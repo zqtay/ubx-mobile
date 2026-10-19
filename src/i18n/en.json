@@ -659,6 +659,14 @@
     "decoded": "Decoded",
     "noDecoder": "UBX Mobile has no decoder for this message.",
     "payload_one": "Payload ({{count}} byte)",
-    "payload_other": "Payload ({{count}} bytes)"
+    "payload_other": "Payload ({{count}} bytes)",
+    "selectHint": "Tap a message to see its details.",
+    "bytes_one": "{{count}} byte",
+    "bytes_other": "{{count}} bytes",
+    "nmeaHeader": "Talker {{talker}} · Sentence {{type}} · Checksum {{checksum}}",
+    "wrapShort": "Wrap",
+    "divider": "Resize the message list and detail panel",
+    "received": "Received",
+    "messageTime": "Message time"
   }
 }

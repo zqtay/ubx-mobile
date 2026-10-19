@@ -7,7 +7,7 @@ export default function AboutScreen() {
   const { t } = useTranslation();
   const config = Constants.expoConfig;
   return (
-    <Screen>
+    <Screen stackPage>
       <Card title={t('app.name')}>
         <AppText muted>{t('about.description')}</AppText>
         <KeyValueRow label={t('about.version')} value={config?.version} mono />

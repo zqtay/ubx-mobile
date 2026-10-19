@@ -12,15 +12,25 @@ export interface CardProps {
   action?: ReactNode;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Content runs edge to edge (list rows with their own padding); the title keeps the card's
+   * normal indent.
+   */
+  flush?: boolean;
 }
 
-export function Card({ title, action, children, style }: CardProps) {
+export function Card({ title, action, children, style, flush }: CardProps) {
   const { colors } = useAppTheme();
   return (
     <View
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, style]}>
+      style={[
+        styles.card,
+        flush && styles.flush,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        style,
+      ]}>
       {(title || action) && (
-        <View style={styles.header}>
+        <View style={[styles.header, flush && styles.flushHeader]}>
           {title ? (
             <AppText variant="heading" accessibilityRole="header" style={styles.title}>
               {title}
@@ -40,6 +50,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  flush: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    gap: 0,
+    overflow: 'hidden',
+  },
+  flushHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
   },
   header: {
     flexDirection: 'row',

@@ -475,25 +475,37 @@ Purpose: identify the receiver and show its capabilities (REQ-DEV). The screen i
 
 ## 8. More → Console (REQ-LOG-01)
 
+The screen is split in two panes: the **message list** and the **control & detail panel**. Portrait: list on top (≈ 55%), panel below. Landscape: list on the left (≈ 55%), panel on the right. A divider between them can be dragged to resize them (list 20–80%). Both panes stay clear of the Android navigation bar and display cut-outs (edge-to-edge), which sit at the bottom in portrait and at the side in landscape.
+
 ```
-┌──────────────────────────────────────────┐
-│ Console        ⏸ Pause  🗑 Clear  ⚲ Filter│
-├──────────────────────────────────────────┤
-│ 11:39:02.104 $GNRMC,113902.00,A,0121.12…│
-│ 11:39:02.105 $GNGGA,113902.00,0121.12…  │
-│ 11:39:02.130 UBX-NAV-PVT (92 B)          │  ← tap UBX row → decoded fields
-│ 11:39:02.141 UBX-NAV-SAT (380 B)         │
-│ 11:39:02.150 ✗ NMEA checksum error       │
-└──────────────────────────────────────────┘
+Portrait                                    Landscape
+┌──────────────────────────────────────────┐ ┌───────────────────────┬──────────────────┐
+│ 11:39:02.104 $GNRMC,113902.00,A,0121.12… │ │ 11:39:02.104 $GNRMC,… │ [⏸ Pause] [🗑] [⚲] [↵]│
+│ 11:39:02.105 $GNGGA,113902.00,0121.12…   │ │ 11:39:02.130 UBX-NAV… │──────────────────│
+│▌11:39:02.130 UBX-NAV-PVT (92 B)          │ │▌11:39:02.141 UBX-NAV… │ UBX-NAV-SAT      │
+│ 11:39:02.150 ✗ NMEA checksum error       │ │ …                     │ 11:39:02.141 · …  │
+├──────────────────────────────────────────┤ │                       │ Decoded …         │
+│ [⏸ Pause] [🗑 Clear] [⚲ Filter] [↵ Wrap] │ │                       │ Payload (hex) …   │
+│ UBX-NAV-PVT · 11:39:02.130 · 92 bytes    │ │                       │                   │
+│ Decoded: { fix … }                       │ │                       │                   │
+│ Payload: 0000  40 78 06 00 …             │ │                       │                   │
+└──────────────────────────────────────────┘ └───────────────────────┴──────────────────┘
 ```
 
-- Ring buffer of the most recent 2,000 entries. Auto-scrolls to the bottom unless the user has scrolled up (then shows a "↓ New messages" pill).
-- Filter: by protocol (NMEA/UBX/Errors) and by message name (multi-select from the names seen).
+**Message list**
+- Ring buffer of the most recent 2,000 entries, monospace, one row per message: time (ms) and text. Long lines wrap or are truncated (Wrap toggle).
+- Auto-scrolls to the newest message unless the user has scrolled up **or a message is selected**; then new messages are added without moving the list, and a "↓ New messages" pill appears. Tapping the pill clears the selection and follows again.
+- Tapping a row **selects** it (highlighted with an accent bar) and shows it in the detail panel; tapping it again clears the selection. Rows never expand. The selection stays shown even after the entry scrolls out of the buffer.
+- Kinds: NMEA, UBX, RTCM3, Errors (checksum/CRC failures, prefixed ✗) and Info (source started; phone Location/GnssStatus summaries).
+
+**Control & detail panel**
+- Controls, always on one line of equal-width compact buttons (icon + label; icon only when the panel is narrower than about 340 dp, the label stays for screen readers): **Pause/Resume** (while paused the list is frozen and the panel shows "Paused — N new messages"), **Clear**, **Filter** (shows the filter chips in the panel: by kind, and by message name from the names seen), **Wrap**.
+- Detail of the selected message (placeholder "Tap a message to see its details" when none):
+  - All kinds: name, kind, size where known; **Received** (local date and time with milliseconds); **Message time** when the message carries one (UTC time field of NMEA GGA/RMC/GLL/GNS/ZDA/GST/GBS; GPS time of week from the iTOW of UBX NAV messages).
+  - NMEA: the full sentence, then talker and sentence type and a numbered list of its fields.
+  - UBX: class/ID, **Decoded** (what the app makes of the message, or "no decoder") and the payload as a hex dump.
+  - RTCM3, errors and info: their text.
 - **Phone source**: shows the phone's NMEA sentences and a one-line summary per GnssStatus/Location callback.
-- Monospace font. Long lines wrap (setting: wrap / truncate).
-- Kinds shown and filterable: NMEA, UBX, RTCM3, Errors (checksum/CRC failures) and Info (source started; phone Location/GnssStatus summaries).
-- Tapping a UBX row expands it: **Decoded** shows what the app makes of the message (its normalised events, or "no decoder"), followed by a hex dump of the payload.
-- While paused, a banner counts the messages that arrived; Resume shows them.
 
 ## 9. More → Settings (REQ-SET)
 

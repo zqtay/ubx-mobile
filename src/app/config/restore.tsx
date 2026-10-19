@@ -17,6 +17,7 @@ import { useConfigStore } from '@/sources';
 import { useGnssStore } from '@/state/gnssStore';
 import { AppText, Banner, Button, Card, SegmentedControl } from '@/ui/components';
 import { settingLabel, settingValue } from '@/ui/config/labels';
+import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
@@ -26,6 +27,7 @@ type Source = 'ram' | 'saved';
 export default function RestoreScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const bottom = useBottomInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const backup = useMemo(() => (id ? findBackup(id) : undefined), [id]);
   const receiver = useGnssStore((s) => s.device.receiver);
@@ -73,7 +75,9 @@ export default function RestoreScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ backgroundColor: colors.bg }}
+      contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
       {differentReceiver(backup, {
         module: receiver.module,
         fwVersion: receiver.fwVersion,

@@ -16,6 +16,7 @@ import { AppText, Banner, Button, Card } from '@/ui/components';
 import { ConfigOutcomeBanner, useConfigLoader } from '@/ui/config/ConfigParts';
 import { unavailableMessage } from '@/ui/config/labels';
 import { formatClock } from '@/ui/format';
+import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
@@ -26,6 +27,7 @@ const restoreRoute = (b: ConfigBackup) =>
 export default function BackupsScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const bottom = useBottomInset();
   const availability = useConfigLoader();
   const busy = useConfigStore((s) => s.busy);
   const [backups, setBackups] = useState(() => listBackups().reverse());
@@ -54,7 +56,9 @@ export default function BackupsScreen() {
     });
 
   return (
-    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ backgroundColor: colors.bg }}
+      contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
       {availability !== 'ok' ? (
         <Banner tone="info" message={unavailableMessage(t, availability)} />
       ) : null}

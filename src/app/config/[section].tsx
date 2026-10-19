@@ -15,6 +15,7 @@ import {
 } from '@/ui/config/ConfigParts';
 import { unavailableMessage } from '@/ui/config/labels';
 import { SettingRow } from '@/ui/config/SettingRow';
+import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
@@ -33,6 +34,8 @@ export default function ConfigSectionScreen() {
   const def = useConfigStore((s) => s.def);
   const staged = useConfigStore((s) => s.staged);
   const busy = useConfigStore((s) => s.busy);
+  // The staged-changes bar handles the navigation bar inset when it is shown.
+  const bottom = useBottomInset(staged.size > 0 || !!busy);
   const stage = useConfigStore((s) => s.stage);
   const unsaved = useMemo(
     () => new Set(unsavedKeys({ ram, bbr, flash, def })),
@@ -54,7 +57,7 @@ export default function ConfigSectionScreen() {
       <Stack.Screen
         options={{ title: section ? t(`config.section.${section.id}`) : t('config.title') }}
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
         {availability !== 'ok' ? (
           <Banner tone="info" message={unavailableMessage(t, availability)} />
         ) : null}

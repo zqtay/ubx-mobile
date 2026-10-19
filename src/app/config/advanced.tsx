@@ -10,6 +10,7 @@ import { storedValue, unsavedKeys } from '@/state/configStore';
 import { AppText, Banner, Button, Chip } from '@/ui/components';
 import { ConfigLoadState, StagedBar, useConfigAvailability } from '@/ui/config/ConfigParts';
 import { unavailableMessage } from '@/ui/config/labels';
+import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing } from '@/ui/theme/tokens';
 
@@ -27,6 +28,7 @@ export default function AdvancedConfigScreen() {
   const def = useConfigStore((s) => s.def);
   const staged = useConfigStore((s) => s.staged);
   const busy = useConfigStore((s) => s.busy);
+  const bottom = useBottomInset(staged.size > 0 || !!busy);
   const allLoaded = useConfigStore((s) => s.allLoaded);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<number | undefined>();
@@ -91,6 +93,7 @@ export default function AdvancedConfigScreen() {
       </View>
       <FlashList
         testID="advanced-list"
+        contentContainerStyle={{ paddingBottom: bottom }}
         data={items}
         keyExtractor={(i) => (i.kind === 'group' ? `g${i.id}` : `k${i.key}`)}
         getItemType={(i) => i.kind}

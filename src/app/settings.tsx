@@ -48,7 +48,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen>
+    <Screen stackPage>
       <Card title={t('settings.appearance')}>
         <Field label={t('settings.theme')}>
           <SegmentedControl<ThemePreference>

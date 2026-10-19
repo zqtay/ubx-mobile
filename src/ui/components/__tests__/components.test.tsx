@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { StyleSheet, Text } from 'react-native';
+
 import { Banner } from '../Banner';
+import { Card } from '../Card';
 import { formatValue, KeyValueRow, NOT_AVAILABLE } from '../KeyValueRow';
 import { SegmentedControl } from '../SegmentedControl';
 import { StatusChip } from '../StatusChip';
@@ -75,5 +78,20 @@ describe('Banner', () => {
     expect(screen.getByText('USB permission denied')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(onAction).toHaveBeenCalled();
+  });
+});
+
+describe('Card', () => {
+  it('keeps the title indented when the content is flush (edge-to-edge rows)', async () => {
+    await render(
+      <Card title="Settings" flush>
+        <Text>row</Text>
+      </Card>,
+    );
+    // The title row is the nearest ancestor laid out as a row.
+    let node = screen.getByText('Settings').parent;
+    while (node && StyleSheet.flatten(node.props.style)?.flexDirection !== 'row')
+      node = node.parent;
+    expect(StyleSheet.flatten(node?.props.style)).toMatchObject({ paddingHorizontal: 16 });
   });
 });
