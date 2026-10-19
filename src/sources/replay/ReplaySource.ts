@@ -46,6 +46,8 @@ export class ReplaySource implements GnssSource {
   async start(emit: GnssEventSink): Promise<void> {
     this.emit = emit;
     emit({ t: 'connection', state: { kind: 'detecting' } });
+    // A log is the receiver's own output; nothing is polled.
+    emit({ t: 'receiver', patch: { dataMode: 'periodic' } });
     this.bytes = await this.load();
     this.epochs = splitEpochs(this.bytes);
     this.index = 0;

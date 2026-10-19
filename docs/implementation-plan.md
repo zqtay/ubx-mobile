@@ -110,6 +110,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** UC-4 works for every receiver in the test matrix.
 
+**Status (2026-10-19):** 5.1–5.2 implemented. The USB Device screen has the USB device/adapter card (with a note that a bridge's descriptor describes the adapter, not the GNSS module), Receiver (MON-VER, SEC-UNIQID), GNSS support (supported/default/enabled/max concurrent), one Antenna & RF card per RF block, Protocols (NMEA version, talkers, UBX, data mode: polling / receiver output / listening only), a live Messages table (rate over 5 s and count per message, from `src/protocols/messageStats.ts`), Stream (bytes, throughput, last-data age, frames, errors, junk) and Info messages. Missing identity values read "waiting…" while connecting/detecting and for 5 s after; rows copy on long-press; Share exports everything. **Open:** 5.3 needs the hardware — compare against u-center 2 for the BE-122 and BZ-251 (versions, unique ID, antenna status with the antenna unplugged).
+
 ### M5b — Receiver configuration (≈ 12 units)
 
 | # | Task | Ref |

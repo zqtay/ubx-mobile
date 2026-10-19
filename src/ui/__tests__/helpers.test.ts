@@ -1,4 +1,4 @@
-import type { Fix } from '@/domain/types';
+import type { Fix, GnssSnapshot } from '@/domain/types';
 
 import { chipState, fixLabelKey, fixTone } from '../fixLabel';
 import {
@@ -15,7 +15,12 @@ import {
   formatUtc,
 } from '../format';
 import { elevationRadius, nearestPoint, placeLabels, project } from '../sky/projection';
-import { deviceReportText } from '../deviceSections';
+import type { TFunction } from 'i18next';
+
+import i18n from '@/i18n';
+import { emptySnapshot } from '@/state/gnssStore';
+
+import { deviceReportText, deviceSections, formatAge, type DeviceSection } from '../deviceSections';
 import { shapePath } from '../sky/shapes';
 
 describe('format (REQ-POS-03)', () => {
@@ -211,5 +216,83 @@ describe('device report (REQ-DEV-07)', () => {
         '  Firmware: SPG 5.10',
       ].join('\n'),
     );
+  });
+});
+
+describe('deviceSections for receivers (functional spec §7.2)', () => {
+  const t = i18n.t.bind(i18n) as unknown as TFunction;
+  const base = (patch: Partial<GnssSnapshot> = {}): GnssSnapshot => ({
+    ...emptySnapshot(),
+    source: 'usb',
+    connection: { kind: 'receiving' },
+    session: { startedAtMs: 0 },
+    ...patch,
+  });
+  const find = (sections: DeviceSection[], title: string) =>
+    sections.find((s) => s.title === title);
+  const row = (section: DeviceSection | undefined, label: string) =>
+    section?.rows.find((r) => r.label === label)?.value;
+
+  it('shows "waiting…" while the receiver is being identified, "—" afterwards', () => {
+    const detecting = deviceSections(t, base({ connection: { kind: 'detecting' } }), 100_000);
+    expect(row(find(detecting, 'Receiver'), 'Firmware')).toBe('waiting…');
+    const early = deviceSections(t, base(), 2_000);
+    expect(row(find(early, 'Receiver'), 'Unique chip ID')).toBe('waiting…');
+    const late = deviceSections(t, base(), 60_000);
+    expect(row(find(late, 'Receiver'), 'Unique chip ID')).toBeUndefined();
+    expect(row(find(late, 'Protocols'), 'Data mode')).toBeUndefined();
+  });
+
+  it('names generic NMEA receivers and shows the data mode', () => {
+    const snap = base({
+      device: { receiver: { vendor: 'generic', nmeaDetected: true, dataMode: 'passive' } },
+    });
+    const sections = deviceSections(t, snap, 60_000);
+    expect(row(find(sections, 'Receiver'), 'Vendor')).toBe('Generic NMEA');
+    expect(row(find(sections, 'Protocols'), 'Data mode')).toBe('Listening only');
+  });
+
+  it('lists every RF block and the messages table', () => {
+    const snap = base({
+      device: {
+        receiver: {
+          gnssDefault: ['GPS'],
+          rf: [
+            { blockId: 0, antennaStatus: 'ok' },
+            { blockId: 1, antennaStatus: 'open' },
+          ],
+        },
+      },
+      stats: {
+        ...emptySnapshot().stats,
+        bytes: 1234,
+        bytesPerSecond: 812.4,
+        lastFrameMs: 59_600,
+        messages: [{ name: 'UBX-NAV-PVT', protocol: 'UBX', count: 42, lastMs: 0, rateHz: 1 }],
+      },
+    });
+    const sections = deviceSections(t, snap, 60_000);
+    expect(row(find(sections, 'Antenna & RF · RF block 1'), 'Antenna status')).toBe('OPEN');
+    expect(find(sections, 'Antenna & RF · RF block 0')).toBeDefined();
+    expect(row(find(sections, 'GNSS support'), 'Default')).toBe('GPS');
+    expect(row(find(sections, 'Messages'), 'UBX-NAV-PVT')).toBe('1.0 Hz · 42');
+    expect(row(find(sections, 'Stream'), 'Throughput')).toBe('812 B/s');
+    expect(row(find(sections, 'Stream'), 'Last data')).toBe('0.4 s ago');
+  });
+
+  it('formats ages', () => {
+    expect(formatAge(-5)).toBe('0.0 s');
+    expect(formatAge(9_940)).toBe('9.9 s');
+    expect(formatAge(45_000)).toBe('45 s');
+    expect(formatAge(600_000)).toBe('10 min');
+  });
+
+  it('includes hints in the share text', () => {
+    const text = deviceReportText(
+      'UBX Mobile',
+      [{ title: 'USB adapter', hint: 'An adapter.', rows: [] }],
+      0,
+    );
+    expect(text).toContain('USB adapter\n  (An adapter.)');
   });
 });

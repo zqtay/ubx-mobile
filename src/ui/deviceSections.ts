@@ -17,7 +17,14 @@ const names = (list: readonly Constellation[] | undefined) =>
   list && list.length > 0 ? list.map((c) => constellationMeta(c).name).join(', ') : undefined;
 
 /** Device information as sections (REQ-DEV-02..08). Which sections appear depends on the source. */
-export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
+/** Missing identity values read "waiting…" for this long after connecting. */
+const IDENTIFY_GRACE_MS = 5000;
+
+export function deviceSections(
+  t: TFunction,
+  s: GnssSnapshot,
+  nowMs: number = Date.now(),
+): DeviceSection[] {
   const sections: DeviceSection[] = [];
   const yesNo = (v: boolean | undefined) =>
     v === undefined ? undefined : v ? t('device.yes') : t('device.no');
@@ -98,7 +105,15 @@ export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
     return sections;
   }
 
+  // While the receiver is being identified, missing values are "waiting…" rather than "—"
+  // (functional spec §7).
+  const identifying =
+    s.connection.kind === 'connecting' ||
+    s.connection.kind === 'detecting' ||
+    (s.session !== undefined && nowMs - s.session.startedAtMs < IDENTIFY_GRACE_MS);
   const waiting = t('device.waiting');
+  const pending = <T>(v: T | undefined) => v ?? (identifying ? waiting : undefined);
+
   const usb = s.device.usb;
   if (usb) {
     const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, '0');
@@ -130,30 +145,38 @@ export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
       {
         label: t('device.vendor'),
         value:
-          r.vendor === 'u-blox' ? 'u-blox' : r.nmeaDetected ? t('device.vendorGeneric') : waiting,
+          r.vendor === 'u-blox'
+            ? 'u-blox'
+            : r.vendor === 'generic' || (r.nmeaDetected && !identifying)
+              ? t('device.vendorGeneric')
+              : pending(undefined),
       },
-      { label: t('device.module'), value: r.module },
-      { label: t('device.hardware'), value: r.hwVersion, mono: true },
-      { label: t('device.software'), value: r.swVersion, mono: true },
-      { label: t('device.firmware'), value: r.fwVersion, mono: true },
-      { label: t('device.protocol'), value: r.protocolVersion, mono: true },
-      { label: t('device.uniqueId'), value: r.uniqueId, mono: true },
+      { label: t('device.module'), value: pending(r.module) },
+      { label: t('device.hardware'), value: pending(r.hwVersion), mono: true },
+      { label: t('device.software'), value: pending(r.swVersion), mono: true },
+      { label: t('device.firmware'), value: pending(r.fwVersion), mono: true },
+      { label: t('device.protocol'), value: pending(r.protocolVersion), mono: true },
+      { label: t('device.uniqueId'), value: pending(r.uniqueId), mono: true },
     ],
   });
-  if (r.gnssSupported || r.gnssEnabled) {
+  if (r.gnssSupported || r.gnssEnabled || r.gnssDefault) {
     sections.push({
       title: t('device.gnss'),
       rows: [
         { label: t('device.supported'), value: names(r.gnssSupported) },
+        { label: t('device.default'), value: names(r.gnssDefault) },
         { label: t('device.enabled'), value: names(r.gnssEnabled) },
         { label: t('device.maxConcurrent'), value: r.maxConcurrentGnss },
       ],
     });
   }
-  const rf = r.rf?.[0];
-  if (rf) {
+  const blocks = r.rf ?? [];
+  for (const rf of blocks) {
     sections.push({
-      title: t('device.rf'),
+      title:
+        blocks.length > 1
+          ? `${t('device.rf')} · ${t('device.rfBlock', { n: rf.blockId })}`
+          : t('device.rf'),
       rows: [
         { label: t('device.antenna'), value: rf.antennaStatus?.toUpperCase() },
         { label: t('device.antennaPower'), value: rf.antennaPower?.toUpperCase() },
@@ -180,12 +203,44 @@ export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
         label: t('device.ubx'),
         value: r.ubxDetected ? t('device.detected') : t('device.notDetected'),
       },
+      {
+        label: t('device.dataMode'),
+        value: r.dataMode ? t(`device.dataModeValue.${r.dataMode}`) : pending(undefined),
+      },
     ],
   });
+  const messages = s.stats.messages ?? [];
+  if (messages.length > 0) {
+    sections.push({
+      title: t('device.messages'),
+      hint: t('device.messagesHint'),
+      rows: messages.map((m) => ({
+        label: m.name,
+        value: `${m.rateHz.toFixed(1)} Hz · ${m.count}`,
+        mono: true,
+      })),
+    });
+  }
   sections.push({
     title: t('device.stream'),
     rows: [
       { label: t('device.bytes'), value: s.stats.bytes.toLocaleString(), mono: true },
+      {
+        label: t('device.throughput'),
+        value:
+          s.stats.bytesPerSecond !== undefined
+            ? `${Math.round(s.stats.bytesPerSecond)} B/s`
+            : undefined,
+        mono: true,
+      },
+      {
+        label: t('device.lastData'),
+        value:
+          s.stats.lastFrameMs !== undefined
+            ? t('device.ago', { age: formatAge(nowMs - s.stats.lastFrameMs) })
+            : undefined,
+        mono: true,
+      },
       {
         label: t('device.frames'),
         value: `${s.stats.nmeaFrames} / ${s.stats.ubxFrames} / ${s.stats.rtcmFrames}`,
@@ -200,6 +255,14 @@ export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
     ],
   });
   return sections;
+}
+
+/** "0.4 s", "12 s", "3 min". */
+export function formatAge(ms: number): string {
+  const s = Math.max(0, ms) / 1000;
+  if (s < 10) return `${s.toFixed(1)} s`;
+  if (s < 120) return `${Math.round(s)} s`;
+  return `${Math.round(s / 60)} min`;
 }
 
 /** Plain-text report for copy/share (REQ-DEV-07). */

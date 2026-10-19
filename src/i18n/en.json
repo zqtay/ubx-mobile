@@ -290,7 +290,21 @@
     "driver": "Driver",
     "baud": "Baud rate",
     "baudNative": "Native USB",
-    "detecting": "Detecting…"
+    "detecting": "Detecting…",
+    "default": "Default",
+    "rfBlock": "RF block {{n}}",
+    "dataMode": "Data mode",
+    "dataModeValue": {
+      "poll": "Polling UBX every second",
+      "periodic": "Receiver output",
+      "passive": "Listening only"
+    },
+    "throughput": "Throughput",
+    "lastData": "Last data",
+    "ago": "{{age}} ago",
+    "messages": "Messages",
+    "messagesHint": "Rate over the last 5 s · count since connecting",
+    "copied": "Copied"
   },
   "more": {
     "console": "Console",

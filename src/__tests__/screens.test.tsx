@@ -188,6 +188,11 @@ describe('Device screen (REQ-DEV)', () => {
     expect(screen.getByLabelText('NMEA version: 4.10+')).toBeTruthy();
     expect(screen.getByText('u-blox AG - www.u-blox.com')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Share device info' })).toBeTruthy();
+    // Messages table and data mode (functional spec §7.2).
+    expect(screen.getByText('Messages')).toBeTruthy();
+    expect(screen.getByLabelText(/^UBX-NAV-SAT: \d+\.\d Hz · \d+$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^GNGSA: /)).toBeTruthy();
+    expect(screen.getByLabelText('Data mode: Receiver output')).toBeTruthy();
   });
 
   it('shows phone details for the phone source (REQ-DEV-02)', async () => {

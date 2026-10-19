@@ -249,6 +249,10 @@ describe('UsbSerialSource (REQ-SER)', () => {
     expect(detected).toEqual([57600]);
     const s = state();
     expect(s.connection).toEqual({ kind: 'receiving' });
+    expect(s.device.receiver.dataMode).toBe('poll');
+    expect(s.stats.messages?.map((m) => m.name)).toEqual(
+      expect.arrayContaining(['UBX-MON-VER', 'UBX-NAV-PVT', 'UBX-NAV-SAT']),
+    );
     expect(s.device.usb).toMatchObject({
       vendorId: 0x10c4,
       productId: 0xea60,
@@ -288,7 +292,11 @@ describe('UsbSerialSource (REQ-SER)', () => {
   it('treats a receiver that never answers UBX as generic NMEA and does not poll it', async () => {
     const { native, state, detected } = await run(GENERIC_NMEA_SIM);
     expect(detected).toEqual([9600]);
-    expect(state().device.receiver).toMatchObject({ vendor: 'generic', nmeaDetected: true });
+    expect(state().device.receiver).toMatchObject({
+      vendor: 'generic',
+      nmeaDetected: true,
+      dataMode: 'passive',
+    });
     const after = native.written.length;
     await jest.advanceTimersByTimeAsync(5000);
     expect(native.written.length).toBe(after);

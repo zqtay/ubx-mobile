@@ -186,6 +186,11 @@ export interface ReceiverInfo {
   talkers?: string[];
   ubxDetected?: boolean;
   nmeaDetected?: boolean;
+  /**
+   * How the app gets data (functional spec §7.2): `poll` = UBX polls every second; `periodic` =
+   * the receiver outputs on its own; `passive` = the app only listens (NMEA-only / probing off).
+   */
+  dataMode?: 'poll' | 'periodic' | 'passive';
   infoMessages?: InfoMessage[];
 }
 
@@ -275,6 +280,17 @@ export type ConnectionState =
   | { kind: 'disconnected'; atMs: number }
   | { kind: 'error'; code: SourceErrorCode; message: string };
 
+/** One row of the Device screen's Messages table (functional spec §7.2). */
+export interface MessageStat {
+  /** e.g. `UBX-NAV-PVT`, `GNGSV`, `RTCM3 1005`. */
+  name: string;
+  protocol: 'UBX' | 'NMEA' | 'RTCM3';
+  count: number;
+  lastMs: number;
+  /** Messages per second over the recent window. */
+  rateHz: number;
+}
+
 export interface StreamStats {
   bytes: number;
   nmeaFrames: number;
@@ -287,6 +303,9 @@ export interface StreamStats {
   junkBytes: number;
   /** Monotonic time of the last valid frame. */
   lastFrameMs?: number;
+  /** Throughput over the recent window. */
+  bytesPerSecond?: number;
+  messages?: MessageStat[];
 }
 
 export interface GnssSnapshot {

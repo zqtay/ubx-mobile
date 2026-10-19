@@ -205,6 +205,8 @@ export class UsbSerialSource implements GnssSource {
     this.emit?.({ t: 'usb', patch: { baud: nativeUsb ? undefined : result.baud } });
     if (!nativeUsb) this.options.onBaudDetected?.(this.ref, result.baud);
     if (!this.ubx) this.emit?.({ t: 'receiver', patch: { vendor: 'generic' } });
+    const polling = this.ubx && this.options.probeUbx;
+    this.emit?.({ t: 'receiver', patch: { dataMode: polling ? 'poll' : 'passive' } });
     this.reportReceiving();
 
     if (this.ubx && this.options.probeUbx && this.client) {

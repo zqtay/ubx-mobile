@@ -15,6 +15,8 @@ export function demoSnapshot(epochs = 10): GnssSnapshot {
     t += 1000;
     acc.applyAll(pipeline.push(log.subarray(start, end), t).events);
   }
+  // As ReplaySource reports it: a log is the receiver's own output.
+  acc.apply({ t: 'receiver', patch: { dataMode: 'periodic' } });
   acc.apply({ t: 'connection', state: { kind: 'receiving' } });
   return acc.snapshot();
 }

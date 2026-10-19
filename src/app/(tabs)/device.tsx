@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import * as Clipboard from 'expo-clipboard';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, ToastAndroid, View } from 'react-native';
 
 import { useGnssStore } from '@/state/gnssStore';
 import { AppText, Button, Card, DataGate, KeyValueRow } from '@/ui/components';
 import { deviceReportText, deviceSections } from '@/ui/deviceSections';
-import { formatClock } from '@/ui/format';
+import { DASH, formatClock } from '@/ui/format';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
@@ -23,11 +24,22 @@ function DeviceContent() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const snapshot = useGnssStore((s) => s);
-  const sections = useMemo(() => deviceSections(t, snapshot), [t, snapshot]);
+  // Ticks once a second so "last data" ages and "waiting…" hints stay current.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const sections = useMemo(() => deviceSections(t, snapshot, now), [t, snapshot, now]);
   const info = snapshot.device.receiver.infoMessages;
 
   const share = () =>
     void Share.share({ message: deviceReportText(t('app.name'), sections, Date.now()) });
+  // Long-press a row to copy it (functional spec §7).
+  const copy = async (label: string, value: string | number | undefined) => {
+    await Clipboard.setStringAsync(`${label}: ${value ?? DASH}`);
+    ToastAndroid.show(t('device.copied'), ToastAndroid.SHORT);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -40,7 +52,12 @@ function DeviceContent() {
             </AppText>
           ) : null}
           {section.rows.map((row) => (
-            <KeyValueRow key={row.label} label={row.label} value={row.value} mono={row.mono} />
+            <Pressable
+              key={row.label}
+              onLongPress={() => void copy(row.label, row.value)}
+              accessibilityHint={t('device.copied')}>
+              <KeyValueRow label={row.label} value={row.value} mono={row.mono} />
+            </Pressable>
           ))}
         </Card>
       ))}
