@@ -805,7 +805,7 @@ Keys used by the v1 sections (names per the interface description; exact availab
 | Message output | `CFG-MSGOUT-NMEA_ID_{GGA,GLL,GSA,GSV,RMC,VTG,ZDA,GNS}_{UART1,USB}`, `CFG-MSGOUT-UBX_NAV_{PVT,SAT,SIG,DOP,STATUS}_{UART1,USB}` |
 | Navigation | `CFG-NAVSPG-DYNMODEL`, `CFG-NAVSPG-FIXMODE`, `CFG-NAVSPG-INFIL_MINELEV`, `CFG-NAVSPG-INFIL_MINCNO`, `CFG-NAVSPG-INFIL_NCNOTHRS`, `CFG-NAVSPG-UTCSTANDARD` |
 | NMEA options | `CFG-NMEA-PROTVER`, `CFG-NMEA-SVNUMBERING`, `CFG-NMEA-HIGHPREC`, `CFG-NMEA-MAINTALKERID`, `CFG-NMEA-GSVTALKERID` |
-| Power (Could) | `CFG-PM-OPERATEMODE`, `CFG-PM-POSUPDATEPERIOD` |
+| Power | `CFG-PM-OPERATEMODE` (E1: 0 full, 1 PSMOO, 2 PSMCT), `CFG-PM-POSUPDATEPERIOD`, `CFG-PM-ACQPERIOD`, `CFG-PM-ONTIME`, `CFG-PM-MINACQTIME`, `CFG-PM-MAXACQTIME`, `CFG-PM-DONOTENTEROFF`, `CFG-PM-WAITTIMEFIX`, `CFG-PM-UPDATEEPH`, `CFG-PM-LIMITPEAKCURR`. Settings other than the mode carry `visibleWhen: mode ≠ full`, evaluated on current + staged values. Rules: `powerSaveRate` (mode ≠ full and nav rate > 1 Hz, warning), `powerSaveSleep` (PSMOO, warning). |
 
 The **connected port** decides which port-specific keys a section edits: CDC-ACM devices use `*_USB`, UART bridges use `*_UART1` (overridable in Advanced, for modules wired to UART2).
 

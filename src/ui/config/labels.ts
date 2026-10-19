@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 
 import type { ConfigAvailability } from '@/config/availability';
-import { keyName, msgoutKey, OUTPUT_MESSAGES, KEY, type CfgPort } from '@/config/keys';
+import { keyName, msgoutKey, OUTPUT_MESSAGES, KEY, type CfgPort, PM_MODE } from '@/config/keys';
 import type { RuleFinding } from '@/config/rules';
 import { formatSettingValue, type SectionDef, type SettingDef } from '@/config/sections';
 import type { ConfigOutcome } from '@/state/configStore';
@@ -119,5 +119,12 @@ export function sectionSummary(
       return show(KEY.NAVSPG_DYNMODEL) ?? '';
     case 'nmea':
       return show(KEY.NMEA_PROTVER) ?? '';
+    case 'power': {
+      const mode = show(KEY.PM_OPERATEMODE) ?? '';
+      const period = show(KEY.PM_POSUPDATEPERIOD);
+      return values.get(KEY.PM_OPERATEMODE) === PM_MODE.PSMOO && period && period !== '0'
+        ? t('config.summary.everySeconds', { mode, period })
+        : mode;
+    }
   }
 }

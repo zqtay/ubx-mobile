@@ -375,12 +375,14 @@
       "gnss": "Constellations",
       "messages": "Message output",
       "navigation": "Navigation",
-      "nmea": "NMEA options"
+      "nmea": "NMEA options",
+      "power": "Power"
     },
     "summary": {
       "messages_one": "{{count}} message",
       "messages_other": "{{count}} messages",
-      "none": "None"
+      "none": "None",
+      "everySeconds": "{{mode}} · every {{period}}"
     },
     "setting": {
       "measRate": "Measurement rate",
@@ -407,7 +409,17 @@
       "svNumbering": "SV numbering",
       "highPrecision": "High precision",
       "mainTalker": "Main talker ID",
-      "gsvTalker": "GSV talker ID"
+      "gsvTalker": "GSV talker ID",
+      "powerMode": "Operating mode",
+      "updatePeriod": "Position update period",
+      "acqPeriod": "Retry after failed fix",
+      "onTime": "On-time after fix",
+      "minAcqTime": "Minimum acquisition time",
+      "maxAcqTime": "Maximum acquisition time",
+      "doNotEnterOff": "Keep searching without a fix",
+      "waitTimeFix": "Wait for time fix",
+      "updateEph": "Update ephemeris",
+      "limitPeakCurrent": "Limit peak current"
     },
     "help": {
       "measRate": "How often the receiver measures. M10 receivers support up to about 10 Hz with few constellations.",
@@ -415,7 +427,15 @@
       "baud": "The app follows the receiver to the new rate and returns to the old one if it does not answer.",
       "dynModel": "Motion the receiver expects; filters out implausible movement.",
       "minElev": "Satellites below this elevation are not used.",
-      "minCno": "Satellites weaker than this are not used."
+      "minCno": "Satellites weaker than this are not used.",
+      "powerMode": "Cyclic tracking saves power for updates every 1–10 s. On/off sleeps between fixes, for long periods.",
+      "updatePeriod": "Time between position fixes in power-save mode. 0 = no periodic fixes.",
+      "acqPeriod": "How long to wait before trying again after a failed fix.",
+      "onTime": "How long to keep tracking after a fix before sleeping.",
+      "maxAcqTime": "Give up a fix attempt after this time. 0 = receiver default.",
+      "doNotEnterOff": "Stay on and keep searching instead of sleeping when no fix is found.",
+      "updateEph": "Wake up regularly to keep satellite orbit data fresh (faster fixes).",
+      "limitPeakCurrent": "Lower the start-up current peak, e.g. for weak supplies. Acquisition may be slower."
     },
     "locked": {
       "ubx": "UBX Mobile needs UBX to talk to the receiver"
@@ -485,7 +505,9 @@
       "noConstellation": "Enable at least one constellation.",
       "rateInvalid": "The measurement period must be between 25 and 65535 ms.",
       "rateHigh": "{{hz}} Hz is more than M10 receivers support with several constellations; the receiver may reject it or drop constellations.",
-      "throughput": "Output (about {{bytes}} B/s) may exceed {{baud}} baud. Increase the baud rate or disable messages."
+      "throughput": "Output (about {{bytes}} B/s) may exceed {{baud}} baud. Increase the baud rate or disable messages.",
+      "powerSaveRate": "Power-save modes need a measurement rate of 1 Hz or slower (now {{hz}} Hz). The receiver may reject the change or ignore the mode.",
+      "powerSaveSleep": "On/off mode puts the receiver to sleep between fixes. UBX Mobile cannot read it while it sleeps, so it will appear disconnected. Power-cycle the receiver to undo unsaved changes."
     },
     "autoDetect": "Detect again",
     "decrease": "Decrease {{name}}",

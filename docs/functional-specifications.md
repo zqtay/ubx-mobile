@@ -569,7 +569,7 @@ Flow: **Edit** (staged) → **Apply** (RAM: takes effect now, lost on power cycl
 │ │ Message output         9 messages  › │ │
 │ │ Navigation             Portable    › │ │
 │ │ NMEA options           4.11        › │ │  (Should)
-│ │ Power                  Full power  › │ │  (Could)
+│ │ Power                  Full power  › │ │
 │ │ Advanced (all keys)                › │ │  (Should)
 │ └──────────────────────────────────────┘ │
 │ ┌ Actions ─────────────────────────────┐ │
@@ -621,8 +621,27 @@ Flow: **Edit** (staged) → **Apply** (RAM: takes effect now, lost on power cycl
 | **Message output** | Two lists, **NMEA** and **UBX**. Each message has an output rate on the connected port: Off / every epoch / every Nth epoch (stepper 0–255). | A note under NAV-PVT/NAV-SAT/NAV-SIG: "Enabling these lets UBX Mobile stop polling (lower link load)". |
 | **Navigation** | Dynamic model (portable, stationary, pedestrian, automotive, sea, airborne <1g/<2g/<4g, wrist, … whichever the receiver supports); fix mode (2D / 3D / auto); minimum elevation (°); minimum C/N0 (dB-Hz) and the minimum number of SVs above it; UTC standard | Each enumeration value has a one-line explanation. |
 | **NMEA options** (Should) | NMEA version; SV numbering (strict / extended); high precision; main talker ID; GSV limits | These change what the app has to parse. The parser handles all variants (tech spec §6.2). |
-| **Power** (Could) | Power mode (full / balanced / interval / aggressive), update period | Warns that power-save modes reduce the update rate. |
+| **Power** | Operating mode (full power / cyclic tracking / on-off); for the power-save modes: position update period, acquisition retry period, on-time, minimum and maximum acquisition time, "stay on when no fix", "wait for time fix", "update ephemeris"; peak-current limit | See §11.4.1. |
 | **Advanced** (Should) | Every key the receiver reports, grouped (CFG-RATE, CFG-UART1, CFG-SIGNAL, …) and searchable. A row shows name, type, current value and an ● unsaved badge. Tapping a row shows details: description, value per layer (RAM / BBR / Flash / Default), unit/scale, and an editor suited to the type. | Keys unknown to the app's key database show only raw ID, type and value, and are edited as raw numbers (with a warning). |
+
+### 11.4.1 Power section
+
+u-blox M10 receivers (CFG-PM) offer three operating modes:
+
+| Mode | What the receiver does | Shown when selected |
+|---|---|---|
+| **Full power** (default) | Tracks continuously at the measurement rate. | — |
+| **Cyclic tracking** (PSMCT) | Stays on but powers parts of the RF/baseband down between fixes. Best for update periods of about 1–10 s. | Period settings below. |
+| **On/off** (PSMOO) | Sleeps between fixes and wakes every *position update period*. For long periods (≥ 10 s). | Period settings below and a warning. |
+
+- Settings that only apply to power-save modes (update period, acquisition period, on-time, acquisition times, flags) are hidden in Full power and appear as soon as a power-save mode is staged.
+- Periods use presets (Off/0, 5 s, 10 s, 30 s, 1 min, 2 min, 5 min, 10 min, 30 min, 1 h); a value set elsewhere (e.g. u-center) is shown as an extra choice.
+- **Warnings** before Apply (they do not block it):
+  - *Power-save modes need a measurement rate of 1 Hz or slower* — when a power-save mode is combined with a faster rate (the BE-122 runs at 10 Hz). The receiver may reject the change or ignore the mode.
+  - *On/off mode puts the receiver to sleep between fixes. UBX Mobile cannot read it while it sleeps, so it will appear disconnected; satellites and fix come back at each wake-up. Unsaved changes are undone by power-cycling the receiver.*
+- The overview summary shows the mode ("Full power", "Cyclic tracking", "On/off · 60 s").
+- External-interrupt wake-up (EXTINT pin) is not offered: modules like the BE-122 do not expose the pin.
+- **No preset choice.** u-center classic also offers the legacy presets of UBX-CFG-PMS (Balanced, Interval, Aggressive 1/2/4 Hz, from u-blox 8). On the M10 they have no effect. Tested on the BZ-251 and the BE-122 (both SPG 5.10, 2026-10-19): CFG-PMS "Balanced" was ACKed (and on the BZ-251 polled back as preset 1), but all 19 CFG-PM keys in RAM (including the undocumented 0x10D00011, 0x20D00012, 0x30D00013, 0x40D00014) read back unchanged. The app therefore offers only the CFG-PM settings; "Cyclic tracking" at 1 Hz is the closest equivalent of "Balanced".
 
 ### 11.5 Changing the baud rate of the connected port
 

@@ -172,6 +172,27 @@ describe('configuration sections (functional spec §11.3)', () => {
     });
   });
 
+  it('reveals power-save settings and warnings when a power-save mode is staged (REQ-CFG-18)', async () => {
+    connectedReceiver();
+    await renderRouter(APP, { initialUrl: '/config' });
+    expect(screen.getByRole('button', { name: /^Power\. Full power/ })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: /^Power\. Full power/ }));
+    expect(screen.queryByText('Position update period')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Operating mode: On/off'));
+    expect(screen.getByText('Position update period')).toBeTruthy();
+    expect(
+      screen.getByText(/Power-save modes need a measurement rate of 1 Hz or slower \(now 10 Hz\)/),
+    ).toBeTruthy();
+    expect(screen.getByText(/On\/off mode puts the receiver to sleep between fixes/)).toBeTruthy();
+    // Warnings do not block Apply.
+    expect(screen.getByRole('button', { name: 'Apply' }).props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
+    await fireEvent.press(screen.getByLabelText('Position update period: 1 min'));
+    expect(useConfigStore.getState().staged.get(KEY.PM_POSUPDATEPERIOD)).toBe(60);
+  });
+
   it('hides settings the receiver does not report', async () => {
     connectedReceiver();
     useConfigStore.setState({ ram: new Map([[KEY.SIGNAL_GPS_ENA, 1]]) });

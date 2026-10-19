@@ -167,7 +167,7 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 | 7.1 | Performance profiling against the budgets (921600 baud, 10 Hz, 100+ signals). Apply the decoder fallback only if needed. | REQ-NFR-03, 04; TS §7.4 |
 | 7.2 | Run the full hardware test matrix (§4) and fix device-specific issues. | — |
 | 7.3 | Long-run soak test (2 h USB session, 2 h phone session): no memory growth, no ANR. | REQ-NFR-05 |
-| 7.4 | Remove unneeded permissions (e.g. INTERNET), add open-source licence notices to About, write the in-app help text (OTG, power, baud). | TS §5.3, §11 |
+| 7.4 | Remove unneeded permissions (INTERNET stays: map tiles, REQ-MAP), add open-source licence notices to About, write the in-app help text (OTG, power, baud). | TS §5.3, §11 |
 | 7.5 | Release build pipeline: signed **APK** (create and back up the release keystore), version 1.0.0, install/upgrade instructions for sideloading ("Install unknown apps" permission). | REQ-NFR-14; TS §12 |
 
 **Exit:** the release candidate passes the acceptance checklist (§5).
@@ -180,7 +180,7 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 | Sky signal heatmap (u-center style) | REQ-SKY-11 | 3 |
 | Elevation-mask ring via CFG-VALGET | REQ-SKY-12 | 1 |
 | Replay source exposed to end users (file picker) | REQ-SRC-05 | 1 |
-| Configuration: power settings | REQ-CFG-18 | 1 |
+| Configuration: power settings — **done 2026-10-19** (FS §11.4.1) | REQ-CFG-18 | 1 |
 | Configuration: legacy (gen ≤ 8) receivers | REQ-CFG-19 | 4 |
 | Phone GNSS: clear aiding data / inject time | REQ-CFG-20 | 1 |
 | Import u-center configuration files | REQ-CFG-21 | 2 |

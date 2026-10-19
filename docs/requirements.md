@@ -233,7 +233,7 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 | REQ-CFG-15 | S | **NMEA options**: NMEA version (4.0 / 4.10 / 4.11), satellite numbering (strict / extended), high-precision mode, talker ID handling. | |
 | REQ-CFG-16 | S | **Backup / restore**: export the full configuration to a JSON file (shared through the Android share sheet), and restore from such a file (to RAM, then optionally save). The automatic pre-change backup can be restored from a list. | A backup taken from the BE-122 and restored after a factory reset gives the same configuration. |
 | REQ-CFG-17 | S | **Advanced key editor**: browse and search every configuration key the receiver reports (grouped as in u-center 2), with type, value per layer (RAM/BBR/Flash/Default) and description, and edit any writable key (staged like everything else). | |
-| REQ-CFG-18 | C | **Power settings** (power-save mode, update period in PSM). | |
+| REQ-CFG-18 | C | **Power settings**: operating mode (full power, cyclic tracking, on/off), position update and acquisition periods, on-time, acquisition time limits and the related flags (CFG-PM). The app warns when a power-save mode will make the receiver sleep or conflicts with the measurement rate. | On the BE-122, switching to cyclic tracking and back to full power is applied, verified and reversible without losing contact. |
 | REQ-CFG-19 | C | **Legacy (generation ≤ 8) configuration** through CFG-PRT, CFG-RATE, CFG-MSG, CFG-GNSS, CFG-NAV5, CFG-RST, CFG-CFG, for the same settings as REQ-CFG-07…14. | |
 | REQ-CFG-20 | C | **Phone GNSS assistance reset**: "Clear aiding data" (cold start) and "Inject time / XTRA" for the phone source, as in GPSTest. | |
 | REQ-CFG-21 | C | Import u-center / u-center 2 configuration files. | |
@@ -296,6 +296,7 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
     - **BE-122:** UART1 at **57600 baud** (not the 38400 of the listing), **NMEA output off and no UBX message enabled** — the module is silent until polled.
     - **Beitian BZ-251:** UART1 at **115200 baud**, outputs NMEA (GGA, GSV, RMC, GSA, GLL, VTG) and UBX NAV-PVT every epoch.
     - Consequences: auto-baud must probe silent rates with a UBX poll, not only listen; in Poll mode all data for the BE-122 comes from UBX polls.
+    - Both report the same CFG-PM power keys (full power). The legacy UBX-CFG-PMS presets are acknowledged but change no CFG-PM key (tested on both modules), so power is configured only through CFG-PM (REQ-CFG-18, FS §11.4.1).
   - As an M10 it uses the generation-9+ UBX interface (CFG-VALGET/VALSET, MON-RF, NAV-SAT, NAV-SIG).
   - Because its configuration is stored in flash, saving is the only permanent step and is always confirmed separately (§6.10 safety model).
 - Monitoring never changes the receiver's configuration. Changes happen only in the Configuration feature, through explicit user actions (REQ-SER-08, §6.10).

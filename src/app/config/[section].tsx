@@ -40,7 +40,8 @@ export default function ConfigSectionScreen() {
   );
 
   const ready = status === 'ready' && port !== undefined;
-  const settings = section && port ? availableSettings(section, port, ram) : [];
+  const effective = useMemo(() => new Map([...ram, ...staged]), [ram, staged]);
+  const settings = section && port ? availableSettings(section, port, ram, effective) : [];
   const note =
     section?.id === 'gnss'
       ? t('config.note.gnss')

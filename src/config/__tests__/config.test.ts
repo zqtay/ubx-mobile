@@ -1,7 +1,7 @@
 import { configAvailability } from '@/config/availability';
 import { backupItems, createBackup, listBackups } from '@/config/backups';
 import { ConfigService } from '@/config/ConfigService';
-import { KEY, msgoutKey, OUTPUT_MESSAGES } from '@/config/keys';
+import { KEY, msgoutKey, OUTPUT_MESSAGES, PM_MODE } from '@/config/keys';
 import { checkRules, estimatedOutputBytesPerSecond, navRateHz } from '@/config/rules';
 import {
   allSectionKeys,
@@ -167,6 +167,53 @@ describe('configuration rules', () => {
   });
 });
 
+describe('power management (REQ-CFG-18, functional spec §11.4.1)', () => {
+  const values = (patch: [number, number][] = []) => new Map([...BE122, ...patch]);
+
+  it('reads the M10 power settings from the dump (full power by default)', () => {
+    expect(BE122.get(KEY.PM_OPERATEMODE)).toBe(PM_MODE.FULL);
+    expect(BE122.get(KEY.PM_POSUPDATEPERIOD)).toBe(10);
+  });
+
+  it('warns about power-save modes at fast rates and about sleeping in on/off mode', () => {
+    const ids = (patch: [number, number][]) =>
+      checkRules(values(patch), 'UART1', 57600).map((f) => f.id);
+    expect(ids([[KEY.PM_OPERATEMODE, PM_MODE.PSMCT]])).toEqual(['powerSaveRate']); // BE-122: 10 Hz
+    expect(
+      ids([
+        [KEY.PM_OPERATEMODE, PM_MODE.PSMCT],
+        [KEY.RATE_MEAS, 1000],
+      ]),
+    ).toEqual([]);
+    expect(
+      ids([
+        [KEY.PM_OPERATEMODE, PM_MODE.PSMOO],
+        [KEY.RATE_MEAS, 1000],
+      ]),
+    ).toEqual(['powerSaveSleep']);
+    expect(
+      checkRules(values([[KEY.PM_OPERATEMODE, PM_MODE.PSMOO]]), 'UART1', 57600)[0],
+    ).toMatchObject({
+      severity: 'warning',
+      params: { hz: 10 },
+    });
+  });
+
+  it('shows the power-save settings only when a power-save mode is current or staged', () => {
+    const power = sectionById('power')!;
+    expect(availableSettings(power, 'UART1', BE122).map((s) => s.key)).toEqual([
+      KEY.PM_OPERATEMODE,
+      KEY.PM_LIMITPEAKCURR,
+    ]);
+    const staged = values([[KEY.PM_OPERATEMODE, PM_MODE.PSMCT]]);
+    expect(availableSettings(power, 'UART1', BE122, staged)).toHaveLength(10);
+    const period = power.settings('UART1').find((s) => s.key === KEY.PM_POSUPDATEPERIOD)!;
+    expect(formatSettingValue(period, 120, ['On', 'Off'])).toBe('2 min');
+    expect(formatSettingValue(period, 3600, ['On', 'Off'])).toBe('1 h');
+    expect(formatSettingValue(period, 45, ['On', 'Off'])).toBe('45');
+  });
+});
+
 describe('configuration sections', () => {
   it('shows only settings the receiver reports, per port', () => {
     const port = sectionById('port')!;
@@ -187,6 +234,7 @@ describe('configuration sections', () => {
       'messages',
       'navigation',
       'nmea',
+      'power',
     ]);
   });
 
@@ -356,6 +404,21 @@ describe('ConfigService on the simulated BE-122 (REQ-CFG)', () => {
     const log = useDiagnostics.getState().entries;
     expect(log.map((e) => e.message)).toEqual(['apply: ok', 'apply: ok']);
     expect(log[0].details).toContain('CFG-NAVSPG-DYNMODEL=4');
+  });
+
+  it('switches to cyclic tracking at 1 Hz and back to full power', async () => {
+    const { service, sim } = await session();
+    const toPsm = await settle(
+      service.apply([
+        { key: KEY.RATE_MEAS, value: 1000 },
+        { key: KEY.PM_OPERATEMODE, value: PM_MODE.PSMCT },
+        { key: KEY.PM_POSUPDATEPERIOD, value: 5 },
+      ]),
+    );
+    expect(toPsm.status).toBe('applied');
+    expect(sim.ram.get(KEY.PM_OPERATEMODE)).toBe(PM_MODE.PSMCT);
+    const back = await settle(service.apply([{ key: KEY.PM_OPERATEMODE, value: PM_MODE.FULL }]));
+    expect(back.status).toBe('applied');
   });
 
   it('reports a NAK as rejected and a value that did not stick as a mismatch', async () => {

@@ -1,4 +1,4 @@
-import { KEY, msgoutKey, OUTPUT_MESSAGES, type CfgPort } from './keys';
+import { KEY, msgoutKey, OUTPUT_MESSAGES, PM_MODE, type CfgPort } from './keys';
 
 /**
  * Checks on a proposed configuration before Apply (technical spec §13.4). Errors block Apply;
@@ -12,7 +12,9 @@ export type RuleId =
   | 'noConstellation'
   | 'throughput'
   | 'rateHigh'
-  | 'rateInvalid';
+  | 'rateInvalid'
+  | 'powerSaveRate'
+  | 'powerSaveSleep';
 
 export interface RuleFinding {
   id: RuleId;
@@ -93,6 +95,17 @@ export function checkRules(
       params: { hz: Math.round(hz * 10) / 10 },
     });
   }
+
+  // Power-save modes (functional spec §11.4.1).
+  const mode = values.get(KEY.PM_OPERATEMODE) ?? PM_MODE.FULL;
+  if (mode !== PM_MODE.FULL && hz !== undefined && hz > 1) {
+    findings.push({
+      id: 'powerSaveRate',
+      severity: 'warning',
+      params: { hz: Math.round(hz * 10) / 10 },
+    });
+  }
+  if (mode === PM_MODE.PSMOO) findings.push({ id: 'powerSaveSleep', severity: 'warning' });
 
   if (port === 'UART1' && baud) {
     const capacity = baud / 10;

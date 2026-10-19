@@ -1,4 +1,4 @@
-import { DYN_MODELS, KEY, keyDef, msgoutKey, OUTPUT_MESSAGES, type CfgPort } from './keys';
+import { DYN_MODELS, KEY, keyDef, msgoutKey, OUTPUT_MESSAGES, PM_MODE, type CfgPort } from './keys';
 import { protocolKeys, type ConfigValues } from './rules';
 
 /**
@@ -23,9 +23,11 @@ export interface SettingDef {
   locked?: string;
   /** Indented under the previous setting (e.g. a signal of a constellation). */
   indent?: boolean;
+  /** Shown only when this holds for the current + staged values (e.g. power-save settings). */
+  visibleWhen?: (values: ConfigValues) => boolean;
 }
 
-export type SectionId = 'rate' | 'port' | 'gnss' | 'messages' | 'navigation' | 'nmea';
+export type SectionId = 'rate' | 'port' | 'gnss' | 'messages' | 'navigation' | 'nmea' | 'power';
 
 export interface SectionDef {
   id: SectionId;
@@ -34,6 +36,7 @@ export interface SectionDef {
     | 'timer-outline'
     | 'serial-port'
     | 'satellite-variant'
+    | 'lightning-bolt-outline'
     | 'email-outline'
     | 'compass-outline'
     | 'code-tags';
@@ -55,6 +58,21 @@ const enumOptions = (key: number) =>
   }));
 
 const sw = { kind: 'switch' } as const;
+
+/** Presets for CFG-PM periods (seconds); 0 = off / never retry. */
+const PERIODS = [0, 5, 10, 30, 60, 120, 300, 600, 1800, 3600].map((value) => ({
+  value,
+  label:
+    value === 0
+      ? '0'
+      : value < 60
+        ? `${value} s`
+        : value < 3600
+          ? `${value / 60} min`
+          : `${value / 3600} h`,
+}));
+
+const powerSave = (v: ConfigValues) => (v.get(KEY.PM_OPERATEMODE) ?? PM_MODE.FULL) !== PM_MODE.FULL;
 
 export const SECTIONS: readonly SectionDef[] = [
   {
@@ -212,19 +230,102 @@ export const SECTIONS: readonly SectionDef[] = [
       },
     ],
   },
+  {
+    id: 'power',
+    title: 'config.section.power',
+    icon: 'lightning-bolt-outline',
+    settings: () => [
+      {
+        key: KEY.PM_OPERATEMODE,
+        label: 'config.setting.powerMode',
+        help: 'config.help.powerMode',
+        control: {
+          kind: 'choice',
+          options: [PM_MODE.FULL, PM_MODE.PSMCT, PM_MODE.PSMOO].map((value) => ({
+            value,
+            label: keyDef(KEY.PM_OPERATEMODE)!.enumValues![value],
+          })),
+        },
+      },
+      {
+        key: KEY.PM_POSUPDATEPERIOD,
+        label: 'config.setting.updatePeriod',
+        help: 'config.help.updatePeriod',
+        control: { kind: 'choice', options: PERIODS },
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_ACQPERIOD,
+        label: 'config.setting.acqPeriod',
+        help: 'config.help.acqPeriod',
+        control: { kind: 'choice', options: PERIODS },
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_ONTIME,
+        label: 'config.setting.onTime',
+        help: 'config.help.onTime',
+        control: { kind: 'choice', options: PERIODS.filter((p) => p.value <= 300) },
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_MINACQTIME,
+        label: 'config.setting.minAcqTime',
+        control: { kind: 'stepper', min: 0, max: 255, unit: 's' },
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_MAXACQTIME,
+        label: 'config.setting.maxAcqTime',
+        help: 'config.help.maxAcqTime',
+        control: { kind: 'stepper', min: 0, max: 255, unit: 's' },
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_DONOTENTEROFF,
+        label: 'config.setting.doNotEnterOff',
+        help: 'config.help.doNotEnterOff',
+        control: sw,
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_WAITTIMEFIX,
+        label: 'config.setting.waitTimeFix',
+        control: sw,
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_UPDATEEPH,
+        label: 'config.setting.updateEph',
+        help: 'config.help.updateEph',
+        control: sw,
+        visibleWhen: powerSave,
+      },
+      {
+        key: KEY.PM_LIMITPEAKCURR,
+        label: 'config.setting.limitPeakCurrent',
+        help: 'config.help.limitPeakCurrent',
+        control: sw,
+      },
+    ],
+  },
 ];
 
 export function sectionById(id: string): SectionDef | undefined {
   return SECTIONS.find((s) => s.id === id);
 }
 
-/** Settings of a section that the receiver reports (values loaded from RAM). */
+/**
+ * Settings of a section that the receiver reports (values loaded from RAM) and whose
+ * `visibleWhen` holds for `values` (current + staged; defaults to RAM).
+ */
 export function availableSettings(
   section: SectionDef,
   port: CfgPort,
   ram: ConfigValues,
+  values: ConfigValues = ram,
 ): SettingDef[] {
-  return section.settings(port).filter((s) => ram.has(s.key));
+  return section.settings(port).filter((s) => ram.has(s.key) && (s.visibleWhen?.(values) ?? true));
 }
 
 /** All keys the configuration screens may read. */

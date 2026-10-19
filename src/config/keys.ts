@@ -124,7 +124,20 @@ export const KEY = {
   NMEA_SVNUMBERING: 0x20930007,
   NMEA_MAINTALKERID: 0x20930031,
   NMEA_GSVTALKERID: 0x20930032,
+  PM_OPERATEMODE: 0x20d00001,
+  PM_POSUPDATEPERIOD: 0x40d00002,
+  PM_ACQPERIOD: 0x40d00003,
+  PM_ONTIME: 0x30d00005,
+  PM_MINACQTIME: 0x20d00006,
+  PM_MAXACQTIME: 0x20d00007,
+  PM_DONOTENTEROFF: 0x10d00008,
+  PM_WAITTIMEFIX: 0x10d00009,
+  PM_UPDATEEPH: 0x10d0000a,
+  PM_LIMITPEAKCURR: 0x10d00010,
 } as const;
+
+/** CFG-PM-OPERATEMODE values (u-blox M10): full power, on/off, cyclic tracking. */
+export const PM_MODE = { FULL: 0, PSMOO: 1, PSMCT: 2 } as const;
 
 export const DYN_MODELS: Record<number, string> = {
   0: 'Portable',
@@ -201,6 +214,22 @@ const KEY_DEFS: CfgKeyDef[] = [
   def(KEY.NMEA_GSVTALKERID, 'CFG-NMEA-GSVTALKERID', 'E1', {
     enumValues: { 0: 'Per GNSS', 1: 'Main talker' },
   }),
+  def(KEY.PM_OPERATEMODE, 'CFG-PM-OPERATEMODE', 'E1', {
+    enumValues: {
+      [PM_MODE.FULL]: 'Full power',
+      [PM_MODE.PSMCT]: 'Cyclic tracking',
+      [PM_MODE.PSMOO]: 'On/off',
+    },
+  }),
+  def(KEY.PM_POSUPDATEPERIOD, 'CFG-PM-POSUPDATEPERIOD', 'U4', { unit: 's' }),
+  def(KEY.PM_ACQPERIOD, 'CFG-PM-ACQPERIOD', 'U4', { unit: 's' }),
+  def(KEY.PM_ONTIME, 'CFG-PM-ONTIME', 'U2', { unit: 's' }),
+  def(KEY.PM_MINACQTIME, 'CFG-PM-MINACQTIME', 'U1', { unit: 's' }),
+  def(KEY.PM_MAXACQTIME, 'CFG-PM-MAXACQTIME', 'U1', { unit: 's' }),
+  def(KEY.PM_DONOTENTEROFF, 'CFG-PM-DONOTENTEROFF', 'L'),
+  def(KEY.PM_WAITTIMEFIX, 'CFG-PM-WAITTIMEFIX', 'L'),
+  def(KEY.PM_UPDATEEPH, 'CFG-PM-UPDATEEPH', 'L'),
+  def(KEY.PM_LIMITPEAKCURR, 'CFG-PM-LIMITPEAKCURR', 'L'),
   ...OUTPUT_MESSAGES.flatMap((m) =>
     (['UART1', 'USB'] as const).map((port) =>
       def(
