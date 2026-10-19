@@ -129,6 +129,20 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Status (2026-10-19):** 5b.1–5b.7 implemented; 324 tests pass. The key database (`src/config/keys.ts`) covers the keys the screens use and was checked against both real dumps instead of being generated from the interface description. `valCodec`, the configuration channel in `UbxClient`, `ConfigService` (load all layers, Apply with read-back, Save to BBR (+ Flash when present), Revert, restart, factory reset, automatic backup, diagnostics log), the baud-change flow with rollback, `rules.ts` and the `configStore` are tested end to end. The tests use a simulated receiver whose configuration database is seeded from the BE-122 dump (`test/helpers/configSim.ts`). The UI covers the overview with summaries, unsaved badges and actions; the six declarative sections (NMEA options from 6.8 included); the staged-changes bar with rule findings; and confirmations. Entry points are More → Receiver configuration and Device → Configure receiver. The dump showed that the BE-122 measures at 10 Hz with NMEA output off on UART1, which is why it is silent until polled. Deviations: the restart choice is three inline buttons on the overview, not a sheet; factory reset uses a destructive confirmation dialog, not hold-to-confirm. **Open:** 5b.8 needs the BE-122. Install a new build (no new native code, so a JS reload is enough), then run each setting through apply → observe → save → power-cycle, do the 57600 ↔ 115200 baud round-trip, and run a factory reset compared against the original dump.
 
+### M5c — Map screen (≈ 4 units)
+
+| # | Task | Ref |
+|---|---|---|
+| 5c.1 | `ui/map/tiles.ts`: Web Mercator and tile maths, with unit tests. | TS §14.1–14.2 |
+| 5c.2 | `TileMap`: OSM tiles via `Image` with User-Agent, SVG overlay (marker, accuracy, course, track), pan / pinch / double-tap. | REQ-MAP-01, 03, 04, 08; TS §14.3–14.4 |
+| 5c.3 | `trackStore` (session track). | REQ-MAP-07 |
+| 5c.4 | Map tab: follow mode, zoom buttons, position overlay with copy, attribution, no-fix / stale / tiles-unavailable states. | REQ-MAP-02, 05, 06, 09; FS §12 |
+| 5c.5 | Check on the phone: gestures feel smooth, the marker sits on the right spot compared with another map app, and offline shows the grid and banner. | |
+
+**Exit:** with the phone source outdoors, the marker and accuracy circle match the position shown by another map app, the track follows a short walk, and the screen degrades gracefully offline.
+
+**Status (2026-10-19):** 5c.1–5c.4 implemented; 340 tests pass, covering tile maths, the track and the Map screen (tiles, User-Agent, attribution, zoom buttons, pan, pinch, follow mode, no-fix and offline states). No new dependencies or native code. The Map is a sixth tab between Sky and Device. About has a privacy note on tile requests. Not done: the custom tile server setting (REQ-MAP-10, Could) and copying the coordinates is untested on hardware. **Open:** 5c.5 on the phone (reload the JS bundle; no rebuild needed).
+
 ### M6 — Should-level features & polish (≈ 12 units)
 
 | # | Task | Ref |

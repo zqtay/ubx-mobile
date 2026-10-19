@@ -29,6 +29,7 @@ The app is a **monitoring and diagnostics tool**. It shows what the receiver see
 5. Position, time and fix status summary.
 6. Mobile-friendly UI in portrait and landscape, phones and tablets, light and dark themes.
 7. **Configuration of u-blox receivers** (§6.10): rates, baud rate and protocols, constellations, message output, navigation settings, receiver restarts, saving to flash, backup/restore and factory reset.
+8. **Map** (§6.11): the current position and the session's track on an OpenStreetMap map. This is the only feature that uses the network.
 
 ### 2.2 Out of scope (v1)
 
@@ -39,7 +40,7 @@ The app is a **monitoring and diagnostics tool**. It shows what the receiver see
 | Configuring non-u-blox receivers (vendor-specific commands such as MediaTek `$PMTK`) | Command sets vary by vendor. Generic NMEA receivers stay monitor-only. |
 | Bluetooth SPP / BLE / TCP / NTRIP sources | Not planned (confirmed Q4). |
 | RTK correction input, AssistNow online/offline upload | Needs network services and writes to the receiver. |
-| Maps / track display on a map | Not requested. A map provider would add a network dependency. |
+| Offline map packages, vector maps, routing, map search | The map (§6.11) shows online OpenStreetMap raster tiles only. |
 
 ## 3. Users and use cases
 
@@ -240,6 +241,21 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 
 ---
 
+### 6.11 Map (REQ-MAP)
+
+| ID | Pri | Requirement | Acceptance criterion |
+|---|---|---|---|
+| REQ-MAP-01 | M | A **Map** screen shows the current position of the active source on an **OpenStreetMap** map, with a circle for the horizontal accuracy (hAcc) when it is known. | The marker is on the reported coordinates at every zoom level (error ≤ 1 screen pixel against the tile projection). The circle radius equals hAcc at the marker's latitude. |
+| REQ-MAP-02 | M | **Follow mode** (on by default) keeps the position centred. Panning the map turns follow mode off. A *My location* button turns it back on. | |
+| REQ-MAP-03 | M | The map can be panned by dragging and zoomed by pinching, double-tapping and with +/− buttons, from zoom 2 (world) to 19 (street). | Buttons are ≥ 48 dp (REQ-NFR-02). |
+| REQ-MAP-04 | M | The map follows the **OSM tile usage policy**: the attribution "© OpenStreetMap contributors" is always visible and links to the copyright page; requests carry a User-Agent that identifies the app; tiles are cached and never bulk-downloaded or prefetched beyond the visible area; zoom stops at 19. | |
+| REQ-MAP-05 | M | Without a fix, the screen says so and shows the last known position (if any) as a hollow marker; with a stale source the marker is hollow and grey (§1.1 data states). | |
+| REQ-MAP-06 | M | When tiles cannot be loaded (offline, server error), a plain grid background and the message "Map tiles unavailable" are shown. The position marker, accuracy circle and coordinates still work. | |
+| REQ-MAP-07 | S | The **track** of the current session (positions since the source started or the receiver restarted) is drawn as a line. It is held in memory only. | |
+| REQ-MAP-08 | S | A course arrow is shown on the marker when the speed is above 0.5 m/s and the course is known. | |
+| REQ-MAP-09 | S | An overlay shows latitude/longitude (in the chosen coordinate format), horizontal accuracy and fix type. Long-press copies the coordinates. | |
+| REQ-MAP-10 | C | A custom tile server URL (e.g. a self-hosted or commercial provider) can be set in Settings. | |
+
 ## 7. Non-functional requirements (REQ-NFR)
 
 | ID | Pri | Requirement |
@@ -250,14 +266,14 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 | REQ-NFR-03 | M | **Responsiveness**: the UI renders data at ≤ 5 Hz (default 2 Hz) whatever the input rate. Scrolling stays at ≥ 55 fps on a mid-range device (e.g. Snapdragon 6-series, 2022) with 60 satellites and a 921600-baud stream at 10 Hz. |
 | REQ-NFR-04 | M | **Latency**: data shows on screen ≤ 1 s after it arrives at the device. |
 | REQ-NFR-05 | M | **Robustness**: corrupt, truncated or unknown messages never crash the app. The parsers resynchronise on the next valid frame. |
-| REQ-NFR-06 | M | **Offline**: the app needs no network connection and sends no data off the device. No analytics in v1. |
+| REQ-NFR-06 | M | **Offline**: everything except the map works without a network connection. The only network traffic is map tile requests (§6.11), made only while the Map screen is visible. No analytics in v1. |
 | REQ-NFR-07 | M | **Accessibility**: information is never conveyed by colour alone (shapes, text, icons). Screen-reader labels on interactive elements. Colour contrast meets WCAG AA. |
 | REQ-NFR-08 | M | **Battery**: GNSS listening and USB reads stop when the app is not in the foreground (default). |
 | REQ-NFR-09 | C | **Background operation**: an optional foreground service keeps a recording running while the app is in the background, with a persistent notification. |
 | REQ-NFR-10 | M | **Cold start** to first interactive screen ≤ 2 s on a mid-range device. |
 | REQ-NFR-11 | M | **Maintainability**: TypeScript strict mode. Protocol parsers are pure, platform-independent TS modules with ≥ 90% unit-test line coverage. |
 | REQ-NFR-12 | S | **Localisation-ready**: all user-visible strings sit in a resource catalogue. English only in v1. |
-| REQ-NFR-13 | M | **Privacy**: location data stays on the device. Shared or exported data goes only where the user explicitly sends it. |
+| REQ-NFR-13 | M | **Privacy**: location data stays on the device. Shared or exported data goes only where the user explicitly sends it. Map tile requests necessarily tell the tile server which area is being viewed (not the exact position). About explains this. |
 
 ## 8. Architectural requirements (REQ-ARC)
 
@@ -294,3 +310,4 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 | Q4 | Bluetooth / network sources? | **Resolved:** not needed. |
 | Q5 | Test hardware? | **Resolved:** an Android phone and a **Beitian BE-122** (u-blox M10, TTL UART), see §9. A USB-to-TTL adapter and an OTG adapter are needed; see implementation plan §4. |
 | Q6 | Minimum Android version: is API 26 acceptable? | Assumed yes. Raising it to API 28/30 would simplify device-info code paths. |
+| Q7 | Map provider? | **Resolved:** OpenStreetMap standard tiles (`tile.openstreetmap.org`), no API key. Their usage policy allows light use by apps that identify themselves and attribute OSM. Heavy use would need another provider (REQ-MAP-10). |

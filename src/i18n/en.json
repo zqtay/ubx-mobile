@@ -7,7 +7,8 @@
     "satellites": "Satellites",
     "sky": "Sky",
     "device": "Device",
-    "more": "More"
+    "more": "More",
+    "map": "Map"
   },
   "source": {
     "none": "No receiver",
@@ -86,6 +87,9 @@
     "console": {
       "title": "Console",
       "placeholder": "The live message stream will appear here."
+    },
+    "map": {
+      "placeholder": "Your position on an OpenStreetMap map will appear here."
     }
   },
   "satellites": {
@@ -333,7 +337,9 @@
     "title": "About",
     "version": "Version",
     "build": "Build",
-    "description": "GNSS monitoring and diagnostics for your phone's receiver and external u-blox / NMEA receivers over USB."
+    "description": "GNSS monitoring and diagnostics for your phone's receiver and external u-blox / NMEA receivers over USB.",
+    "mapPrivacy": "The Map screen loads map tiles from OpenStreetMap (tile.openstreetmap.org) while it is open. The requests show which area is being viewed, never the exact position. Nothing else leaves the device.",
+    "privacy": "Privacy"
   },
   "common": {
     "notAvailable": "—",
@@ -484,5 +490,18 @@
     "autoDetect": "Detect again",
     "decrease": "Decrease {{name}}",
     "increase": "Increase {{name}}"
+  },
+  "map": {
+    "waitingFix": "Waiting for a position fix…",
+    "lastPosition": "No fix — showing the last position",
+    "tilesUnavailable": "Map tiles unavailable — check the internet connection",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "following": "Following position",
+    "centre": "Centre on position",
+    "attribution": "© OpenStreetMap contributors",
+    "openCopyright": "© OpenStreetMap contributors. Open the copyright page",
+    "copied": "Coordinates copied",
+    "copyHint": "Long-press to copy the coordinates"
   }
 }

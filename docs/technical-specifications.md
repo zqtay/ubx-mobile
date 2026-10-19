@@ -23,6 +23,7 @@
 | Sheets | Expo Router routes with `presentation: 'formSheet'` (native Android bottom sheet) | Receiver sheet (`src/app/source.tsx`) and satellite detail (`src/app/satellite/[key].tsx`). No extra library. Android form sheets have no header, so titles and close buttons are part of the content. |
 | Animation / gestures | react-native-reanimated, react-native-gesture-handler | Navigation and gestures; smooth heading rotation (M6). |
 | Persistence | **react-native-mmkv** v4 (+ `react-native-nitro-modules`) | Synchronous key-value store for settings and remembered source, used through zustand `persist` with a versioned schema. |
+| Map | **No map SDK.** OpenStreetMap raster tiles drawn with React Native `Image` (Fresco HTTP + disk cache on Android), overlays with react-native-svg, gestures with the View responder props (§14) | No API key and no new native code. react-native-maps and expo-maps use Google Maps on Android, which needs an API key; MapLibre needs a native rebuild and adds ~10 MB; a Leaflet WebView adds react-native-webview and a second rendering engine. |
 | Compass heading | `expo-location` `watchHeadingAsync` | True heading. Needs location permission, which the app already has. |
 | Files / sharing | `expo-file-system`, `expo-sharing`, `expo-document-picker`, `expo-clipboard` | Logs, replay, share device info. |
 | Keep awake | `expo-keep-awake` | REQ-SET-03. |
@@ -95,6 +96,7 @@ ubx-mobile/
 │  │  │  ├─ status.tsx
 │  │  │  ├─ satellites.tsx
 │  │  │  ├─ sky.tsx
+│  │  │  ├─ map.tsx                  # OpenStreetMap position + track (§14)
 │  │  │  ├─ device.tsx
 │  │  │  └─ more.tsx
 │  │  ├─ config/                     # receiver configuration stack (FS §11)
@@ -137,6 +139,7 @@ ubx-mobile/
 │  │  ├─ components/                 # StatusChip, Card, KeyValueRow, ConstellationBadge, Cn0Bar…
 │  │  ├─ satellites/                 # SatelliteRow, SatelliteTable, SatelliteDetailSheet, FilterBar
 │  │  ├─ sky/                        # SkyPlot, SkyGrid, SatMarker, Cn0Gauge, Legend, projection.ts
+│  │  ├─ map/                        # tiles.ts (Web Mercator, tile maths), TileMap, PositionLayer
 │  │  ├─ chart/SignalChart.tsx
 │  │  └─ theme/{tokens,ThemeProvider}.ts
 │  └─ i18n/en.json
@@ -744,7 +747,7 @@ All errors are written to a diagnostics ring log (500 entries) that the user can
 
 ## 11. Security & privacy
 
-- No network calls. No analytics or crash reporting SDKs in v1 (REQ-NFR-06).
+- The only network calls are OpenStreetMap tile requests from the Map screen (§14.4), made only while it is visible. No analytics or crash reporting SDKs in v1 (REQ-NFR-06).
 - Location data is held in memory only, except for user-initiated recordings and exports, which are written to app-private storage and shared through the Android share sheet.
 - The two-channel UbxClient (§6.6) guarantees that monitoring never changes the receiver. Configuration writes only originate from explicit user actions, persistent writes need a second confirmation, and every write is logged (§13).
 - `android:exported` is set only on the main activity (needed for the launcher and the USB attach intent).
@@ -868,3 +871,47 @@ Restore applies `layers.flash` (or `ram`, as chosen in the preview) to RAM. It s
 ### 13.6 Legacy receivers (REQ-CFG-19, Could)
 
 A `LegacyConfigAdapter` maps the same section model onto CFG-PRT, CFG-RATE, CFG-MSG, CFG-GNSS, CFG-NAV5 and CFG-CFG. It has no layers: Apply = send the message, and Save = CFG-CFG `saveMask`. The UI hides "value per layer" for these receivers.
+
+---
+
+## 14. Map (REQ-MAP, FS §12)
+
+### 14.1 Components
+
+| Module | Role |
+|---|---|
+| `ui/map/tiles.ts` | Pure Web Mercator maths (EPSG:3857, 256 px tiles): `project(lat, lon, zoom)` → world pixels, `unproject`, `metersPerPixel(lat, zoom)`, `visibleTiles(center, zoom, width, height)`, `panBy`, `zoomAround`, `toScreen`. Latitude is clamped to ±85.0511°; longitude wraps. Unit-tested against known tile coordinates. |
+| `ui/map/TileMap.tsx` | Controlled view `{center, zoom}`: renders the visible tiles as absolutely positioned `Image`s, the SVG overlay (track, accuracy circle, marker, course arrow) and handles gestures. Reports tile load/error counts. |
+| `state/trackStore.ts` | Session track (REQ-MAP-07): subscribes to `gnssStore`, appends the position when a new fix arrives and it moved ≥ 1 m from the previous point, max 2000 points (oldest dropped). Cleared when the source kind or `session.startedAtMs` changes (new source, receiver restart). Memory only. |
+| `app/(tabs)/map.tsx` | Screen: follow mode, zoom buttons, position overlay, attribution, tile-error banner (FS §12). |
+
+### 14.2 Rendering
+
+- **Fractional zoom.** The view zoom `z` is a float (pinch). Tiles are loaded at `tz = round(z)` clamped to 0–19 and drawn at `256 · 2^(z − tz)` px. At most about (⌈w/256⌉+2) × (⌈h/256⌉+2) ≈ 20 tiles on a phone.
+- **Placement.** The world pixel of the centre at `tz`, scaled, minus half the view size, gives the view origin. Tile `(x, y)` is drawn at `x·size − originX`. `x` is wrapped modulo `2^tz` for the URL (the map repeats horizontally); `y` outside `0…2^tz−1` is not drawn.
+- **Overlay** (react-native-svg, same coordinate system): track polyline, accuracy circle (`r = hAcc / metersPerPixel(lat, z)`), marker, course arrow.
+- **Updates.** Pan/pinch update `{center, zoom}` through React state per move event. With ~20 `Image`s and one `Svg` this stays well within the frame budget. If profiling shows otherwise, move the tile layer into a Reanimated transform during the gesture and commit on release.
+
+### 14.3 Gestures (View responder props)
+
+The handlers are plain `onResponderGrant/Move/Release` props, not `PanResponder.create` in a `useMemo`: the React Compiler lint rejects refs and impure calls inside a memoised factory, and the gesture state of `PanResponder` is not needed.
+
+
+- One finger: pan. `center = panBy(center₀, zoom, dx, dy)`, relative to the state at gesture start.
+- Two fingers: pinch. `zoom = zoom₀ + log₂(d / d₀)` around the midpoint (`zoomAround`), plus the midpoint's movement as pan. When the number of fingers changes, the gesture re-anchors (new `center₀`, `zoom₀`, `d₀`).
+- Double tap (two releases < 300 ms apart by event timestamp, < 20 px apart): `zoomAround(+1)` at the tap.
+- Any pan or pinch calls `onUserMove`, which turns follow mode off.
+
+### 14.4 Tile source and OSM policy
+
+- URL template `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, one constant in `tiles.ts` (later: a setting, REQ-MAP-10).
+- Each request sets `User-Agent: UBXMobile/<version> (Android; GNSS diagnostics)` through the `Image` source `headers`.
+- Caching: Fresco's HTTP and disk caches; tiles are requested only for the visible area, never prefetched.
+- Max zoom 19. Attribution always visible (FS §12.1).
+- `INTERNET` permission: included in Expo's default Android manifest; no change needed.
+
+### 14.5 Tests
+
+- `tiles.ts`: known tile indices (e.g. zoom 16 around a reference point), projection round trips, wrapping and clamping, `zoomAround` keeps the focal point fixed, `metersPerPixel` at the equator and at 60°.
+- `trackStore`: appends on new fixes, ignores fixes without coordinates or with fix type none, threshold, cap, reset on source change and restart.
+- Screen test: renders tiles with the expected URLs and User-Agent, the marker and the attribution; zoom buttons and pinching change the tile zoom; panning (simulated through the responder handlers) turns follow mode off and My location turns it on again; no-fix, last-position and tiles-unavailable states.

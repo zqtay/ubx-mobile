@@ -30,13 +30,13 @@ The reference screenshots in [examples/](examples/) are a guide, not a template:
 │              screen content              │
 │                                          │
 ├──────────────────────────────────────────┤
-│ Status │ Satellites │  Sky  │ Device │ ⋯ │  ← Bottom tab bar
+│ Status │ Satellites │ Sky │ Map │ Device │ ⋯ │  ← Bottom tab bar
 └──────────────────────────────────────────┘
 ```
 
 > **Terminology:** user-facing text calls a source a **GNSS receiver** ("Choose a GNSS receiver", "No receiver"). "GPS" is used only for the GPS constellation itself, never as a synonym for GNSS, so the wording stays consistent with the Satellites, Device and Configuration screens. This spec and the code keep the internal term **source** (Source sheet, `GnssSource`).
 
-- **Bottom tabs** (in order): `Status`, `Satellites`, `Sky`, `Device`, `More`.
+- **Bottom tabs** (in order): `Status`, `Satellites`, `Sky`, `Map`, `Device`, `More`. Six tabs fit a 360 dp wide phone (60 dp each); if labels get truncated at large font scales, the tab bar shows icons only.
 - **More** contains: **Receiver configuration** (u-blox only, §11), Console, Signal chart (if not on the Satellites screen), Recording (Could), Settings, Help, About.
 - **Source status chip** (header, top-right, every main screen): source icon (📱 phone / 🔌 USB / ▶ replay) + short state text, e.g. `USB · 3D Fix`, `Phone · No fix`, `USB · Disconnected`. Tapping it opens the **Source sheet** (§2).
 - On launch:
@@ -47,7 +47,7 @@ The reference screenshots in [examples/](examples/) are a guide, not a template:
 
 ### 1.1 Global data states
 
-Every data screen (Status, Satellites, Sky, Device) handles these states the same way:
+Every data screen (Status, Satellites, Sky, Map, Device) handles these states the same way:
 
 | State | Display |
 |---|---|
@@ -507,6 +507,7 @@ Purpose: identify the receiver and show its capabilities (REQ-DEV). The screen i
 | | Sky: dense grid | on/off | off |
 | | Sky: labels | on/off | on |
 | | Sky: trails | Off / 10 min / 1 h | Off |
+| Map | Tile server (Could, REQ-MAP-10) | URL template `…/{z}/{x}/{y}.png` | OpenStreetMap |
 | USB | Default baud | list | Auto |
 | | Probe for UBX | on/off | on |
 | | UBX data mode | Poll (safe) / Enable periodic output (RAM only) | Poll |
@@ -661,3 +662,56 @@ User stages 38400 → 115200 and taps Apply
 | New output would exceed the link capacity | Before Apply, estimate output bytes/s from enabled messages × rate. If it is above ~80% of baud/10, warn: "Output may exceed 38400 baud. Increase the baud rate or disable messages." |
 | Receiver generation ≤ 8 (no CFG-VAL interface) | Overview shows "This receiver uses the legacy configuration interface", with the legacy sections if REQ-CFG-19 is implemented. Otherwise Configuration is read-only with that message. |
 | Generic NMEA or phone source | Configuration is not available (REQ-CFG-01). For the phone source, a "Clear aiding data" action may be offered (REQ-CFG-20, Could). |
+
+---
+
+## 12. Map screen (REQ-MAP)
+
+```
+┌──────────────────────────────────────────┐
+│ Map                  [● USB · 3D Fix ▾]  │
+├──────────────────────────────────────────┤
+│ ┌──────────────────────────────────────┐ │
+│ │ 1.3520833° N  103.8198361° E         │ │  ← position overlay (long-press: copy)
+│ │ ±2.4 m · 3D fix                       │ │
+│ └──────────────────────────────────────┘ │
+│        ░░░ OpenStreetMap tiles ░░░   [+] │
+│      ·····                           [−] │
+│           ·····  ◯ ← accuracy circle     │
+│                ··●➤  ← position + course │
+│                                      [◎] │  ← My location (filled = following)
+│ © OpenStreetMap contributors             │  ← attribution (tap: copyright page)
+├──────────────────────────────────────────┤
+│ Status │ Satellites │ Sky │ Map │ Device │ ⋯ │
+└──────────────────────────────────────────┘
+```
+
+### 12.1 Behaviour
+
+| Element | Behaviour |
+|---|---|
+| Map | OpenStreetMap standard raster tiles. Drag to pan, pinch to zoom, double-tap to zoom in one level around the tapped point. Zoom range 2–19. Starts at zoom 16 on the position; with no position yet, at zoom 2 on (0°, 0°). |
+| Position marker | Filled dot in the primary colour with a white outline. Hollow when there is no current fix (last known position) and grey when the source is stale (§1.1). |
+| Accuracy circle | Translucent circle with radius hAcc (metres converted at the marker's latitude). Hidden when hAcc is unknown or smaller than the dot. |
+| Course arrow | Drawn on the marker when speed > 0.5 m/s and course is known (REQ-MAP-08). |
+| Track | Line through the session's positions (REQ-MAP-07). Cleared when the source changes or the receiver restarts. At most 2000 points; the oldest are dropped. |
+| Follow mode | On by default: the map re-centres on each new position. Dragging or pinching turns it off. **[◎] My location** turns it on again and centres the map. The button shows the state (filled / outline icon, and its label says "Following" or "Centre on position"). |
+| Zoom buttons | **[+]** / **[−]**, one level per tap, around the map centre (around the position when following). |
+| Position overlay | Latitude and longitude in the coordinate format from Settings, horizontal accuracy and fix type (same labels as the Status screen). Long-press copies `lat, lon` and shows a toast. Without a fix: "Waiting for a position fix…". |
+| Attribution | "© OpenStreetMap contributors", always visible at the bottom left. Tap opens https://www.openstreetmap.org/copyright. |
+| Dark theme | The tiles stay as published; they are dimmed slightly (80% opacity on the dark background) so the map is not glaring. |
+
+### 12.2 States and errors
+
+| Situation | Display |
+|---|---|
+| No source / connecting / error | Same as every data screen (§1.1). |
+| Source running, no fix yet, no last position | World view, overlay "Waiting for a position fix…". |
+| No fix, last position known | Map stays on the last position; hollow marker; overlay "No fix — last position from 12:03:15". |
+| Tiles cannot be loaded (offline, blocked, HTTP error) | Grid background; banner "Map tiles unavailable — check the internet connection". The marker, track, accuracy circle and overlay still work. Tiles retry when the map is moved or zoomed. |
+| Phone is offline when the screen opens | As above. No other screen is affected (REQ-NFR-06). |
+
+### 12.3 Network and privacy
+
+- Tiles are requested only while the Map screen is visible and only for the visible area (no prefetching or offline download, per the OSM tile usage policy).
+- Requests contain the tile coordinates, so the tile server learns roughly which area is being viewed. They never contain the position, the receiver identity or any other data. About states this.

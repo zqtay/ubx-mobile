@@ -15,6 +15,7 @@ const tabs = [
   { name: 'status', icon: 'crosshairs-gps', titleKey: 'tabs.status' },
   { name: 'satellites', icon: 'satellite-variant', titleKey: 'tabs.satellites' },
   { name: 'sky', icon: 'radar', titleKey: 'tabs.sky' },
+  { name: 'map', icon: 'map-outline', titleKey: 'tabs.map' },
   { name: 'device', icon: 'chip', titleKey: 'tabs.device' },
   { name: 'more', icon: 'dots-horizontal', titleKey: 'tabs.more' },
 ] as const satisfies readonly { name: string; icon: IconName; titleKey: string }[];

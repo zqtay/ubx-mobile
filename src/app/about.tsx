@@ -13,6 +13,9 @@ export default function AboutScreen() {
         <KeyValueRow label={t('about.version')} value={config?.version} mono />
         <KeyValueRow label={t('about.build')} value={config?.android?.versionCode} mono />
       </Card>
+      <Card title={t('about.privacy')}>
+        <AppText muted>{t('about.mapPrivacy')}</AppText>
+      </Card>
     </Screen>
   );
 }

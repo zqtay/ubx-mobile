@@ -3,6 +3,7 @@ import type { SourceErrorCode } from '@/domain/types';
 import { createConfigStore } from '@/state/configStore';
 import { useGnssStore } from '@/state/gnssStore';
 import { usbDeviceKey, useSettings } from '@/state/settingsStore';
+import { startTrackRecorder } from '@/state/trackStore';
 
 import AndroidGnss from '../../modules/android-gnss';
 import UsbSerial, { type UsbSerialDevice } from '../../modules/usb-serial';
@@ -24,6 +25,9 @@ export const sourceManager = new SourceManager({
   refreshHz: settings.refreshRateHz,
   satelliteTimeoutMs: settings.satelliteTimeoutS * 1000,
 });
+
+// The session track is recorded whichever screen is open (REQ-MAP-07).
+startTrackRecorder();
 
 useSettings.subscribe((s, prev) => {
   if (s.refreshRateHz !== prev.refreshRateHz) sourceManager.setRefreshRate(s.refreshRateHz);
