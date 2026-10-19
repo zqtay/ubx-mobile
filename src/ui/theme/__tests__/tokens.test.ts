@@ -33,6 +33,15 @@ describe.each(schemes)('%s palette meets WCAG AA (REQ-NFR-07)', (scheme) => {
     // Used satellite rows are tinted with infoBg and may show muted captions.
     ['textMuted on infoBg', c.textMuted, c.infoBg],
     ['primary on bg', c.primary, c.bg],
+    // M6 screens: unsaved badges, Console rows, wide-table Y/N cells, staged values.
+    ['warning on surface (unsaved badge)', c.warning, c.surface],
+    ['warning on bg (unsaved count)', c.warning, c.bg],
+    ['primary on surfaceAlt (Console UBX detail)', c.primary, c.surfaceAlt],
+    ['danger on bg (Console errors)', c.danger, c.bg],
+    ['success on bg (wide table Y)', c.success, c.bg],
+    ['danger on infoBg (wide table N, used row)', c.danger, c.infoBg],
+    ['success on infoBg (wide table Y, used row)', c.success, c.infoBg],
+    ['primary on infoBg', c.primary, c.infoBg],
   ])('%s', (_name, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA);
   });

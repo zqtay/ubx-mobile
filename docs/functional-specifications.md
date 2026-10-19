@@ -491,6 +491,9 @@ Purpose: identify the receiver and show its capabilities (REQ-DEV). The screen i
 - Filter: by protocol (NMEA/UBX/Errors) and by message name (multi-select from the names seen).
 - **Phone source**: shows the phone's NMEA sentences and a one-line summary per GnssStatus/Location callback.
 - Monospace font. Long lines wrap (setting: wrap / truncate).
+- Kinds shown and filterable: NMEA, UBX, RTCM3, Errors (checksum/CRC failures) and Info (source started; phone Location/GnssStatus summaries).
+- Tapping a UBX row expands it: **Decoded** shows what the app makes of the message (its normalised events, or "no decoder"), followed by a hex dump of the payload.
+- While paused, a banner counts the messages that arrived; Resume shows them.
 
 ## 9. More → Settings (REQ-SET)
 
@@ -666,8 +669,8 @@ User stages 38400 → 115200 and taps Apply
 | **Restart receiver** | Sheet with three choices, each explained: **Hot start** (keeps all data), **Warm start** (clears ephemeris), **Cold start** (clears ephemeris, almanac, position and time). One tap, no extra confirmation. | GNSS-only software reset, so the serial link stays up. Clears the satellite list and resets TTFF tracking. The Status screen shows "Restarted (cold) at 12:03:15 — waiting for fix". |
 | **Save to flash** | Dialog "Make these changes permanent?" listing the unsaved settings (old saved → new). **Cancel** / **Save**. | Writes the changed keys' current values to BBR + Flash, then reads back to confirm. The "unsaved" count goes to 0. |
 | **Revert to saved** | Dialog "Undo N unsaved changes?" | Writes the saved values back to RAM for the changed keys. A baud change follows §11.5. |
-| **Backup** (Should) | — | Reads the full configuration (all layers) into a JSON file and opens the Android share sheet. The backup is also kept in the app's backup list (last 20, including the automatic pre-change backups, labelled e.g. "Auto · before first change · 12:03"). |
-| **Restore** (Should) | Pick a backup from the list or a file → preview the differences from the current configuration → **Apply to RAM** (then optional Save). | Keys the receiver does not know are skipped and listed. A backup from a different receiver model shows a warning. |
+| **Backup** (Should) | — | Reads the full configuration (all layers: every key the receiver reports, via CFG-VALGET wildcard in pages of 64) as JSON and opens the Android share sheet. *Implementation note:* the JSON is shared as text (no file-system/sharing modules, so no native rebuild); restoring from outside the app is done by copying that text and choosing **Paste backup from clipboard**. The backup is also kept in the app's backup list (last 20, including the automatic pre-change backups, labelled e.g. "Auto · before first change · 12:03"). |
+| **Restore** (Should) | Pick a backup from the list or paste one → choose *Current values* or *Saved values* (when the backup has them) → preview the differences from the current configuration → **Stage N changes**, which go through the normal staged-changes bar (rules, confirmation, Apply to RAM, then optional Save). | Keys the receiver does not know are skipped and listed. A backup from a different receiver model shows a warning. |
 | **Factory reset** | Dialog with explicit wording: "Erase all saved settings and restore u-blox factory defaults? The receiver will restart and its baud rate will return to the default (e.g. 38400)." Hold-to-confirm button. | Clears the BBR + Flash configuration and restarts the receiver. The app reconnects (with auto-baud if the baud rate changed). |
 
 ### 11.7 Configuration edge cases

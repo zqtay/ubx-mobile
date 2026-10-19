@@ -15,9 +15,14 @@ import { spacing } from '@/ui/theme/tokens';
 
 import { outcomeMessage, ruleMessage, settingLabel, settingValue } from './labels';
 
+/** Whether configuration is available for the connected receiver. */
+export function useConfigAvailability() {
+  return useGnssStore((s) => configAvailability(s));
+}
+
 /** Whether configuration is available, loading it once when it becomes available. */
 export function useConfigLoader() {
-  const availability = useGnssStore((s) => configAvailability(s));
+  const availability = useConfigAvailability();
   const status = useConfigStore((s) => s.status);
   useEffect(() => {
     if (availability === 'ok' && status === 'idle') void useConfigStore.getState().load();

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -14,13 +15,15 @@ export interface FilterBarProps {
   filter: SatelliteFilterSettings;
   /** Show the "Used only" / "Has signal" toggles. */
   showToggles?: boolean;
+  /** Element at the end of the summary line (e.g. the list/chart toggle). */
+  trailing?: ReactNode;
 }
 
 /**
  * Summary counts, constellation chips (multi-select, with used/view counts) and filter toggles
  * (REQ-SAT-07, REQ-SAT-08). The filter is persisted and shared with the Sky view.
  */
-export function FilterBar({ counts, filter, showToggles = true }: FilterBarProps) {
+export function FilterBar({ counts, filter, showToggles = true, trailing }: FilterBarProps) {
   const { t } = useTranslation();
   const updateFilter = useSettings((s) => s.updateSatelliteFilter);
   const selected = new Set(filter.constellations);
@@ -34,13 +37,16 @@ export function FilterBar({ counts, filter, showToggles = true }: FilterBarProps
 
   return (
     <View style={styles.container}>
-      <AppText variant="label" muted testID="satellite-summary">
-        {t('satellites.summary', {
-          used: counts.total.used,
-          signal: counts.total.withSignal,
-          view: counts.total.inView,
-        })}
-      </AppText>
+      <View style={styles.summary}>
+        <AppText variant="label" muted testID="satellite-summary" style={styles.flex}>
+          {t('satellites.summary', {
+            used: counts.total.used,
+            signal: counts.total.withSignal,
+            view: counts.total.inView,
+          })}
+        </AppText>
+        {trailing}
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -109,5 +115,13 @@ const styles = StyleSheet.create({
   },
   separator: {
     width: spacing.xs,
+  },
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: spacing.sm,
+  },
+  flex: {
+    flex: 1,
   },
 });

@@ -86,7 +86,7 @@ export const palettes: Record<ColorSchemeName, Palette> = {
     onPrimary: '#FFFFFF',
     grid: '#9AA1AC',
     skyBg: '#FFFFFF',
-    success: '#2E7D32',
+    success: '#2A7530',
     warning: '#8A5300',
     danger: '#C62828',
     info: '#1565C0',

@@ -159,6 +159,18 @@ function StatusContent() {
             value={t(`status.carrierValue.${fix.carrierSolution}`)}
           />
         ) : null}
+        {fix?.differential !== undefined ? (
+          <KeyValueRow
+            label={t('status.differential')}
+            value={fix.differential ? t('status.yes') : t('status.no')}
+          />
+        ) : null}
+        {fix?.fixOk !== undefined ? (
+          <KeyValueRow
+            label={t('status.fixOk')}
+            value={fix.fixOk ? t('status.yes') : t('status.no')}
+          />
+        ) : null}
       </Card>
 
       <Card title={t('status.time')}>
@@ -166,12 +178,29 @@ function StatusContent() {
         <KeyValueRow label={t('status.local')} value={formatLocalTime(fix?.utc?.epochMs)} mono />
         {fix?.utc ? (
           <KeyValueRow
-            label={t('status.timeValid')}
+            label={t('status.validity')}
+            value={[
+              fix.utc.dateValid ? t('status.dateValid') : t('status.dateInvalid'),
+              fix.utc.timeValid ? t('status.timeValid') : t('status.timeInvalid'),
+              fix.utc.fullyResolved === undefined
+                ? undefined
+                : fix.utc.fullyResolved
+                  ? t('status.resolved')
+                  : t('status.unresolved'),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
+        ) : null}
+        {fix?.leapSeconds !== undefined ? (
+          <KeyValueRow
+            label={t('status.leapSeconds')}
             value={
-              fix.utc.timeValid && fix.utc.dateValid
-                ? t('status.timeValid')
-                : t('status.timeInvalid')
+              fix.leapSecondsValid
+                ? t('status.leapValue', { value: fix.leapSeconds })
+                : t('status.leapDefault', { value: fix.leapSeconds })
             }
+            mono
           />
         ) : null}
       </Card>

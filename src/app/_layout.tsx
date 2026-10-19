@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { restoreLastSource } from '@/sources';
+import { useKeepScreenOn } from '@/ui/hooks/useKeepScreenOn';
 import { ThemeProvider, useAppTheme } from '@/ui/theme/ThemeProvider';
 
 export default function RootLayout() {
@@ -22,6 +23,7 @@ export default function RootLayout() {
 function RootStack() {
   const { t } = useTranslation();
   const { scheme, colors } = useAppTheme();
+  useKeepScreenOn();
 
   // Restart the remembered source on launch (REQ-SRC-04).
   useEffect(() => {
@@ -39,6 +41,9 @@ function RootStack() {
         <Stack.Screen name="about" options={{ title: t('about.title') }} />
         <Stack.Screen name="config/index" options={{ title: t('config.title') }} />
         <Stack.Screen name="config/[section]" options={{ title: t('config.title') }} />
+        <Stack.Screen name="config/backups" options={{ title: t('config.backups.title') }} />
+        <Stack.Screen name="config/advanced" options={{ title: t('config.advanced.title') }} />
+        <Stack.Screen name="config/restore" options={{ title: t('config.restore.title') }} />
         <Stack.Screen
           name="source"
           options={{

@@ -8,16 +8,17 @@ import {
   type LayerValues,
   type Mismatch,
 } from '@/config/ConfigService';
+import type { ConfigBackup } from '@/config/backups';
 import type { CfgPort } from '@/config/keys';
 import { checkRules, type RuleFinding } from '@/config/rules';
 import { allSectionKeys } from '@/config/sections';
-import type { RestartKind } from '@/config/valCodec';
+import { LAYER, type CfgItem, type RestartKind } from '@/config/valCodec';
 import type { ConfigAction } from '@/sources/usb/UbxClient';
 
-export type ConfigBusy = ConfigAction | 'load';
+export type ConfigBusy = ConfigAction | 'load' | 'backup';
 
 export interface ConfigOutcome {
-  action: ConfigAction;
+  action: ConfigAction | 'backup';
   status: ApplyStatus | 'done' | 'failed';
   mismatches: Mismatch[];
 }
@@ -34,6 +35,8 @@ export interface ConfigState {
   flash: LayerValues;
   def: LayerValues;
   hasFlash: boolean;
+  /** Every key has been read (advanced editor), not only the section keys. */
+  allLoaded: boolean;
   /** Changes made in the app, not yet applied to the receiver (functional spec §11.5). */
   staged: Map<number, number>;
   busy?: ConfigBusy;
@@ -43,6 +46,14 @@ export interface ConfigState {
   stage(key: number, value: number): void;
   unstage(key: number): void;
   discard(): void;
+  /** Stages several values at once (restore from a backup). */
+  stageMany(items: readonly CfgItem[]): void;
+  /** Full backup of all layers into the backup list (REQ-CFG-16). */
+  backup(): Promise<ConfigBackup | undefined>;
+  /** Loads every key the receiver reports in all layers (advanced editor, REQ-CFG-17). */
+  loadAll(): Promise<void>;
+  /** Current RAM values of `keys`; keys the receiver does not report are absent. */
+  readCurrent(keys: readonly number[]): Promise<Map<number, number> | undefined>;
   apply(): Promise<ApplyResult | undefined>;
   save(): Promise<ApplyResult | undefined>;
   revertToSaved(): Promise<ApplyResult | undefined>;
@@ -88,6 +99,7 @@ const empty = () => ({
   flash: new Map<number, number>(),
   def: new Map<number, number>(),
   hasFlash: false,
+  allLoaded: false,
   staged: new Map<number, number>(),
 });
 
@@ -117,7 +129,9 @@ export function createConfigStore(getService: () => ConfigService | undefined) {
     };
 
     const reload = async (service: ConfigService) => {
-      const loaded = await service.load(allSectionKeys(service.port));
+      // Section keys, plus every key loaded by the advanced editor.
+      const keys = [...new Set([...allSectionKeys(service.port), ...get().ram.keys()])];
+      const loaded = await service.load(keys);
       set({
         ...loaded,
         port: service.port,
@@ -182,6 +196,56 @@ export function createConfigStore(getService: () => ConfigService | undefined) {
       },
 
       discard: () => set({ staged: new Map() }),
+
+      stageMany: (items) => {
+        const staged = new Map(get().staged);
+        for (const { key, value } of items) {
+          if (get().ram.get(key) === value) staged.delete(key);
+          else staged.set(key, value);
+        }
+        set({ staged });
+      },
+
+      backup: async () =>
+        run('backup', async (service) => {
+          try {
+            const backup = await service.backup('manual');
+            set({ lastOutcome: { action: 'backup', status: 'done', mismatches: [] } });
+            return backup;
+          } catch {
+            set({ lastOutcome: { action: 'backup', status: 'failed', mismatches: [] } });
+            return undefined;
+          }
+        }),
+
+      loadAll: async () => {
+        await run('load', async (service) => {
+          set({ status: 'loading', error: undefined });
+          try {
+            const ram = await service.readAll(LAYER.RAM);
+            const bbr = await service.readAll(LAYER.BBR);
+            const flash = await service.readAll(LAYER.FLASH);
+            const def = await service.readAll(LAYER.DEFAULT);
+            set({
+              ram,
+              bbr,
+              flash,
+              def,
+              hasFlash: flash.size > 0,
+              allLoaded: true,
+              port: service.port,
+              baud: service.localBaud,
+              status: 'ready',
+              error: undefined,
+            });
+          } catch (e) {
+            set({ status: 'error', error: e instanceof ConfigTimeoutError ? 'timeout' : 'failed' });
+          }
+        });
+      },
+
+      readCurrent: async (keys) =>
+        run('load', (service) => service.read(keys, LAYER.RAM).catch(() => undefined)),
 
       apply: async () => {
         const changes = [...get().staged].map(([key, value]) => ({ key, value }));

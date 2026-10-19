@@ -1,5 +1,6 @@
 import { AppState, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 
+import { recordConsole } from '@/state/consoleStore';
 import { GnssAccumulator } from '@/state/GnssAccumulator';
 import { emptySnapshot, startCommitLoop, useGnssStore } from '@/state/gnssStore';
 
@@ -39,8 +40,11 @@ export class SourceManager {
     this.stopCommit = startCommitLoop(this.accumulator, this.refreshHz);
     this.appState ??= AppState.addEventListener('change', (s) => void this.onAppState(s));
     try {
+      recordConsole([{ kind: 'info', name: 'Source', text: `Started: ${source.label}` }]);
       await source.start((e) => {
-        if (this.active === source) this.accumulator.apply(e);
+        if (this.active !== source) return;
+        if (e.t === 'console') recordConsole(e.entries);
+        else this.accumulator.apply(e);
       });
     } catch (error) {
       this.accumulator.apply({

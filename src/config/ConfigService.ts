@@ -10,6 +10,7 @@ import {
   buildResetFrame,
   buildValGetPayload,
   buildValSetFrames,
+  ALL_KEYS,
   LAYER,
   LAYER_MASK,
   MAX_ITEMS,
@@ -103,6 +104,47 @@ export class ConfigService {
     };
     for (let i = 0; i < keys.length; i += MAX_ITEMS) await readChunk(keys.slice(i, i + MAX_ITEMS));
     return values;
+  }
+
+  /**
+   * Every key the receiver reports in a layer (CFG-VALGET wildcard, read in pages of 64 as
+   * u-center does). An empty map when the layer is not available (NAK, e.g. no flash).
+   */
+  async readAll(layer: Layer): Promise<LayerValues> {
+    const values: LayerValues = new Map();
+    for (let position = 0; position < 0xffff; position += MAX_ITEMS) {
+      const response = await this.link.client.valget(
+        buildValGetPayload(layer, [ALL_KEYS], position),
+      );
+      if (response === 'timeout') throw new ConfigTimeoutError('The receiver did not answer');
+      if (response === 'nak') break;
+      const items = parseValGetResponse(response)?.items ?? [];
+      for (const it of items) values.set(it.key, it.value);
+      if (items.length < MAX_ITEMS) break;
+    }
+    return values;
+  }
+
+  /** Full backup of all layers (REQ-CFG-16), stored in the backup list. */
+  async backup(kind: ConfigBackup['kind'] = 'manual'): Promise<ConfigBackup> {
+    const ram = await this.readAll(LAYER.RAM);
+    const bbr = await this.readAll(LAYER.BBR);
+    const flash = await this.readAll(LAYER.FLASH);
+    const def = await this.readAll(LAYER.DEFAULT);
+    const backup = createBackup(kind, this.receiver, {
+      ram: toItems(ram),
+      bbr: toItems(bbr),
+      ...(flash.size > 0 ? { flash: toItems(flash) } : {}),
+      default: toItems(def),
+    });
+    storeBackup(backup);
+    logDiagnostic({ level: 'info', area: 'config', message: `Backup: ${ram.size} keys` });
+    return backup;
+  }
+
+  /** Receiver identity recorded in backups. */
+  get receiverInfo(): ConfigBackup['receiver'] {
+    return this.receiver;
   }
 
   /** Current (RAM), stored (BBR, Flash) and default values (REQ-CFG-02). */
@@ -269,16 +311,13 @@ export class ConfigService {
   private async backupOnce(keys: readonly number[]): Promise<void> {
     if (this.backedUp || keys.length === 0) return;
     const ram = await this.read(keys, LAYER.RAM).catch(() => new Map<number, number>());
-    storeBackup(
-      createBackup(
-        'auto',
-        this.receiver,
-        [...ram].map(([key, value]) => ({ key, value })),
-      ),
-    );
+    storeBackup(createBackup('auto', this.receiver, { ram: toItems(ram) }));
     this.backedUp = true;
   }
 }
+
+const toItems = (values: ReadonlyMap<number, number>): CfgItem[] =>
+  [...values].map(([key, value]) => ({ key, value }));
 
 function describe(action: ConfigAction, items: readonly CfgItem[]): string {
   return `${action}: ${items.map((i) => `${keyName(i.key)}=${i.value}`).join(', ')}`;

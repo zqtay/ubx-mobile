@@ -1,11 +1,12 @@
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable } from 'react-native';
-import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Polyline, Text as SvgText } from 'react-native-svg';
 
 import { constellationMeta, svLabel, type SvLabelStyle } from '@/domain/constellations';
 import type { Satellite } from '@/domain/types';
 import { cn0Color } from '@/ui/theme/cn0Scale';
+import type { Trail } from '@/state/skyTrailStore';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 
 import { nearestPoint, placeLabels, project } from './projection';
@@ -20,6 +21,8 @@ export interface SkyPlotProps {
   denseGrid?: boolean;
   /** Heading-up rotation in degrees (0 = north up). */
   rotationDeg?: number;
+  /** Recent positions per satellite (REQ-SKY-10), drawn as faded lines. */
+  trails?: ReadonlyMap<string, Trail>;
   onSelect?: (key: string) => void;
 }
 
@@ -35,6 +38,7 @@ export const SkyPlot = memo(function SkyPlot({
   showLabels = true,
   denseGrid = false,
   rotationDeg = 0,
+  trails,
   onSelect,
 }: SkyPlotProps) {
   const { t } = useTranslation();
@@ -151,6 +155,30 @@ export const SkyPlot = memo(function SkyPlot({
             </SvgText>
           );
         })}
+        {[...(trails ?? [])].map(([key, trail]) =>
+          trail.points.length > 1 ? (
+            <Polyline
+              key={`trail-${key}`}
+              testID={`trail-${key}`}
+              points={trail.points
+                .map((p) => {
+                  const q = project(
+                    p.elevation,
+                    p.azimuth,
+                    R,
+                    { x: center, y: center },
+                    rotationDeg,
+                  );
+                  return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+                })
+                .join(' ')}
+              fill="none"
+              stroke={colors.gnss[constellationMeta(trail.constellation).color]}
+              strokeOpacity={0.45}
+              strokeWidth={1.5}
+            />
+          ) : null,
+        )}
         {markers.map(({ sat, point }) => {
           const used = sat.used === true;
           return (

@@ -3,7 +3,14 @@
  * receiver, seeded with a real module's RAM layer from its u-center dump.
  */
 import { KEY } from '@/config/keys';
-import { buildValSetFrames, LAYER, LAYER_MASK, parseValGetResponse } from '@/config/valCodec';
+import {
+  ALL_KEYS,
+  buildValSetFrames,
+  LAYER,
+  LAYER_MASK,
+  MAX_ITEMS,
+  parseValGetResponse,
+} from '@/config/valCodec';
 import { buildUbx } from '@/protocols/ubx/builder';
 import { UBX } from '@/protocols/ubx/ids';
 
@@ -126,6 +133,16 @@ export class ConfigSim {
               : undefined
             : this.def;
     if (!source) return [nak(0x06, UBX.CFG_VALGET[1])];
+    const position = view.getUint16(2, true);
+    if (payload.length === 8 && view.getUint32(4, true) === ALL_KEYS) {
+      // Wildcard: every key of the layer, 64 per page starting at `position`.
+      const page = [...source]
+        .slice(position, position + MAX_ITEMS)
+        .map(([key, value]) => ({ key, value }));
+      return [
+        buildUbx(UBX.CFG_VALGET[0], UBX.CFG_VALGET[1], valgetResponse(layer, page, position)),
+      ];
+    }
     const items: { key: number; value: number }[] = [];
     for (let o = 4; o + 4 <= payload.length; o += 4) {
       const key = view.getUint32(o, true);
@@ -185,12 +202,18 @@ export class ConfigSim {
 }
 
 /** CFG-VALGET response payload: version 1, layer, position 0, key/value pairs (≤ 64). */
-function valgetResponse(layer: number, items: { key: number; value: number }[]): Uint8Array {
+function valgetResponse(
+  layer: number,
+  items: { key: number; value: number }[],
+  position = 0,
+): Uint8Array {
   // A VALSET frame has the same item layout: take its payload (strip sync, class/id, length and
   // checksum) and patch the header.
   const frame = buildValSetFrames(0, items)[0];
   const payload = frame.slice(6, frame.length - 2);
   payload[0] = 1;
   payload[1] = layer;
+  payload[2] = position & 0xff;
+  payload[3] = position >> 8;
   return payload;
 }

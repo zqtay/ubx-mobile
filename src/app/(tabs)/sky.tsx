@@ -1,16 +1,20 @@
 import { router } from 'expo-router';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { averageCn0, hasSkyPosition } from '@/state/selectors';
 import { useSettings } from '@/state/settingsStore';
+import { useSkyTrails } from '@/state/skyTrailStore';
 import { AppText, Card, DataGate } from '@/ui/components';
+import { useCompassHeading } from '@/ui/hooks/useCompassHeading';
 import { useSatelliteView } from '@/ui/hooks/useSatelliteView';
 import { FilterBar } from '@/ui/satellites/FilterBar';
 import { Cn0Gauge } from '@/ui/sky/Cn0Gauge';
 import { Legend } from '@/ui/sky/Legend';
 import { SkyPlot } from '@/ui/sky/SkyPlot';
+import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 
 export default function SkyScreen() {
@@ -29,6 +33,12 @@ function SkyContent() {
   const { filtered, counts, filter, labelStyle } = useSatelliteView();
   const showLabels = useSettings((s) => s.skyLabels);
   const denseGrid = useSettings((s) => s.skyDenseGrid);
+  const trailsOn = useSettings((s) => s.skyTrails !== 'off');
+  const trails = useSkyTrails((s) => s.trails);
+  const { colors } = useAppTheme();
+  const [headingUp, setHeadingUp] = useState(false);
+  const compass = useCompassHeading(headingUp);
+  const rotationDeg = compass.status === 'ok' ? compass.headingDeg : 0;
 
   const landscape = windowWidth > windowHeight;
   const contentWidth = width - spacing.lg * 2;
@@ -47,7 +57,36 @@ function SkyContent() {
     <ScrollView
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       contentContainerStyle={styles.content}>
-      <FilterBar counts={counts} filter={filter} />
+      <FilterBar
+        counts={counts}
+        filter={filter}
+        trailing={
+          <View style={styles.heading}>
+            {headingUp ? (
+              <AppText variant="caption" muted testID="sky-heading">
+                {compass.status === 'ok'
+                  ? `${Math.round(compass.headingDeg)}°`
+                  : compass.status === 'unavailable'
+                    ? t('sky.compassUnavailable')
+                    : '…'}
+              </AppText>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={headingUp ? t('sky.northUp') : t('sky.headingUp')}
+              accessibilityState={{ selected: headingUp }}
+              onPress={() => setHeadingUp(!headingUp)}
+              hitSlop={8}
+              style={styles.headingButton}>
+              <MaterialCommunityIcons
+                name={headingUp ? 'compass' : 'compass-outline'}
+                size={24}
+                color={headingUp ? colors.primary : colors.textMuted}
+              />
+            </Pressable>
+          </View>
+        }
+      />
       <View style={[styles.body, landscape && styles.row]}>
         <View style={styles.plot}>
           <SkyPlot
@@ -56,6 +95,8 @@ function SkyContent() {
             labelStyle={labelStyle}
             showLabels={showLabels}
             denseGrid={denseGrid}
+            rotationDeg={rotationDeg}
+            trails={trailsOn ? trails : undefined}
             onSelect={openDetail}
           />
           {withoutPosition > 0 ? (
@@ -99,5 +140,16 @@ const styles = StyleSheet.create({
   },
   note: {
     textAlign: 'center',
+  },
+  heading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  headingButton: {
+    width: 40,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

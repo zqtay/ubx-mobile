@@ -1,4 +1,4 @@
-import { router, usePreventRemove } from 'expo-router';
+import { router, usePreventRemove, type Href } from 'expo-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
@@ -159,6 +159,22 @@ export default function ConfigOverviewScreen() {
                 subtitle={t('config.revert.hint')}
                 disabled={!!busy || unsaved.size === 0}
                 onPress={revert}
+              />
+              {divider}
+              <ListItem
+                icon="file-tree-outline"
+                title={t('config.advanced.entry')}
+                subtitle={t('config.advanced.entryHint')}
+                disabled={!!busy}
+                onPress={() => router.push('/config/advanced' as Href)}
+              />
+              {divider}
+              <ListItem
+                icon="backup-restore"
+                title={t('config.backups.entry')}
+                subtitle={t('config.backups.entryHint')}
+                disabled={!!busy}
+                onPress={() => router.push('/config/backups' as Href)}
               />
               {divider}
               <ListItem

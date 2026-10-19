@@ -11,15 +11,16 @@ import { useSettings } from '@/state/settingsStore';
  */
 export function useSatelliteView() {
   const satellites = useGnssStore((s) => s.satellites);
-  const { filter, sort, labelStyle } = useSettings(
+  const { filter, sort, labelStyle, showFlags } = useSettings(
     useShallow((s) => ({
       filter: s.satelliteFilter,
       sort: s.satelliteSort,
       labelStyle: s.svLabelStyle,
+      showFlags: s.showFlags,
     })),
   );
   const counts = useMemo(() => countSatellites(satellites), [satellites]);
   const filtered = useMemo(() => filterSatellites(satellites, filter), [satellites, filter]);
   const sorted = useMemo(() => sortSatellites(filtered, sort), [filtered, sort]);
-  return { all: satellites, filtered, sorted, counts, filter, sort, labelStyle };
+  return { all: satellites, filtered, sorted, counts, filter, sort, labelStyle, showFlags };
 }

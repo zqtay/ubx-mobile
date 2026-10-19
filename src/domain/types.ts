@@ -116,6 +116,9 @@ export interface Fix {
   utc?: UtcTime;
   /** Android: location came from a mock provider. */
   isMock?: boolean;
+  /** GPS−UTC leap seconds (UBX NAV-TIMELS); `leapSecondsValid` false = firmware default. */
+  leapSeconds?: number;
+  leapSecondsValid?: boolean;
   /** Monotonic receive time of the latest update. */
   receivedAtMs: number;
 }

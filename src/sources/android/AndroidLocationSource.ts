@@ -86,6 +86,15 @@ export function satellitesFromStatus(entries: readonly NativeSvStatus[], atMs: n
 }
 
 /** Location → partial fix. Android's altitude is the WGS84 ellipsoid height. */
+/** One-line Console summary of a Location callback. */
+export function locationSummary(fix: Extract<GnssEvent, { t: 'fix' }>['fix']): string {
+  const pos =
+    fix.lat !== undefined && fix.lon !== undefined
+      ? `${fix.lat.toFixed(7)}, ${fix.lon.toFixed(7)}`
+      : 'no position';
+  return `Location: ${pos}${fix.hAccM !== undefined ? ` ±${fix.hAccM.toFixed(1)} m` : ''}`;
+}
+
 export function fixFromLocation(l: NativeLocation): Extract<GnssEvent, { t: 'fix' }>['fix'] {
   return {
     fixType: l.alt !== undefined ? '3d' : '2d',
@@ -240,7 +249,12 @@ export class AndroidLocationSource implements GnssSource {
       native.addListener('onLocation', (l) => {
         this.counts.location += 1;
         if (l.altMsl !== undefined) this.hasMslFromLocation = true;
-        emit({ t: 'fix', origin: 'android', fix: fixFromLocation(l) });
+        const fix = fixFromLocation(l);
+        emit({ t: 'fix', origin: 'android', fix });
+        emit({
+          t: 'console',
+          entries: [{ kind: 'info', name: 'Location', text: locationSummary(fix) }],
+        });
         this.receiving();
       }),
       native.addListener('onGnssStatus', ({ sats, atMs }) => {
@@ -251,11 +265,28 @@ export class AndroidLocationSource implements GnssSource {
         // Android reports no explicit "fix lost"; no satellites used means no fix.
         emit({ t: 'fix', origin: 'android', fix: used === 0 ? { fixType: 'none', numSvUsed: 0 } : { numSvUsed: used } });
         this.observe(observations, used);
+        emit({
+          t: 'console',
+          entries: [
+            {
+              kind: 'info',
+              name: 'GnssStatus',
+              text: `GnssStatus: ${observations.length} satellites, ${used} used`,
+            },
+          ],
+        });
         this.receiving();
       }),
       native.addListener('onFirstFix', ({ ttffMs }) => emit({ t: 'ttff', ms: ttffMs })),
       native.addListener('onNmea', ({ lines }) => {
         this.observed.nmea = true;
+        emit({
+          t: 'console',
+          entries: lines.map(({ line }) => {
+            const text = line.trimEnd();
+            return { kind: 'nmea' as const, name: text.slice(1).split(/[,*]/)[0], text };
+          }),
+        });
         for (const { line } of lines) {
           for (const e of this.nmea.pushLine(line, this.now())) {
             const kept = this.filterNmea(e);

@@ -915,3 +915,20 @@ The handlers are plain `onResponderGrant/Move/Release` props, not `PanResponder.
 - `tiles.ts`: known tile indices (e.g. zoom 16 around a reference point), projection round trips, wrapping and clamping, `zoomAround` keeps the focal point fixed, `metersPerPixel` at the equator and at 60°.
 - `trackStore`: appends on new fixes, ignores fixes without coordinates or with fix type none, threshold, cap, reset on source change and restart.
 - Screen test: renders tiles with the expected URLs and User-Agent, the marker and the attribution; zoom buttons and pinching change the tile zoom; panning (simulated through the responder handlers) turns follow mode off and My location turns it on again; no-fix, last-position and tiles-unavailable states.
+
+---
+
+## 15. M6 implementation notes
+
+| Feature | Design |
+|---|---|
+| Console (REQ-LOG-01) | Sources emit `{ t: 'console', entries }` events (the protocol pipeline builds them from frames plus new checksum/CRC errors; the phone source adds its NMEA lines and Location/GnssStatus summaries). `SourceManager` routes them to `state/consoleStore` instead of the accumulator. The store keeps a 2000-entry ring buffer outside React and publishes a snapshot at most every 250 ms (frozen while paused). UBX entries keep their payload for the decoded detail (`ui/console/decode.ts`). |
+| Settings (REQ-SET) | All settings of FS §9 have controls. *Keep screen on* uses `expo-keep-awake` (already linked through `expo`, so no rebuild) while a source is active. *Show constellation flags* draws regional-indicator flag emoji. |
+| Periodic UBX output (REQ-SER-09) | `sources/usb/periodicOutput.ts`: after identification, if enabled, reads the measurement rate and the CFG-MSGOUT keys of the connected port and enables NAV-PVT (≤ 5 Hz) and NAV-SAT/SIG/DOP/STATUS (≈ 1 Hz) in **RAM only** through the configuration channel (`ConfigAction` `periodic-output`), leaving messages that are already on. The poll scheduler skips what arrives unsolicited. |
+| u-blox Status extras (REQ-POS-02) | NAV-TIMELS (polled every 30 s) → `fix.leapSeconds`/`leapSecondsValid`. Status shows differential, fix-OK (gnssFixOK), date/time validity and full resolution, and leap seconds. |
+| Signal chart (REQ-SAT-11) | `ui/chart/SignalChart.tsx`: View-based bars (accessible, tappable), one bar per signal for multi-signal SVs, 0–55 dB-Hz, used = solid with outline, unused = 40% opacity. Toggled from the Satellites summary line. |
+| Wide table (REQ-SAT-09) | `ui/satellites/SatelliteWideTable.tsx` from 600 dp: pinned SV column, other columns in a horizontal `ScrollView` whose header scrolls with it; Y/N/? cells as dot + letter. |
+| Heading-up and trails (REQ-SKY-09/10) | `useCompassHeading` (expo-location `watchHeadingAsync`, true heading when available, 2° dead band). `state/skyTrailStore` samples sky positions every 10 s while trails are on, keeps 10 min / 1 h, resets per source; `SkyPlot` draws them in constellation colours. |
+| Backup / restore (REQ-CFG-16) | `ConfigService.readAll(layer)` uses the CFG-VALGET wildcard `0x0FFFFFFF` with `position` paging (as in the u-center 2 dumps); `backup()` stores RAM/BBR/Flash/Default. `config/backups.ts`: format v1 (optional layers), parse/validate, restore plan (changes / unchanged / unknown), saved-values view (BBR over Flash), different-receiver warning. Restore stages the changes (`stageMany`). |
+| Advanced editor (REQ-CFG-17) | `config/groups.ts`: group names by group ID, type from the key database or the size bits, ranges, raw parsing (decimal or 0x hex). `configStore.loadAll()` reads every key in all layers; afterwards reloads re-read all loaded keys, so unsaved markers cover every key. |
+| Accessibility (REQ-NFR-07) | Contrast tests cover the new colour pairs (the light `success` colour was darkened to #2A7530 for the tinted rows); a screen test checks that every button/link on the main screens has an accessible name. |

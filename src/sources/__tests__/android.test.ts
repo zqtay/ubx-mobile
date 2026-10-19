@@ -261,8 +261,16 @@ describe('AndroidLocationSource', () => {
         'GPTXT,01,01,02,hello',
       ].map((l) => ({ timestampMs: 0, line: withChecksum(l) })),
     });
-    const added = events.slice(before);
+    const added = events.slice(before).filter((e) => e.t !== 'console');
     expect(added.map((e) => e.t).sort()).toEqual(['dop', 'fix', 'info']);
+    // Every sentence is shown in the Console (functional spec §8).
+    const console = events.slice(before).find((e) => e.t === 'console');
+    expect(console?.t === 'console' && console.entries.map((x) => x.name)).toEqual([
+      'GPGGA',
+      'GPGSA',
+      'GPGSV',
+      'GPTXT',
+    ]);
     expect(added.find((e) => e.t === 'fix')).toEqual({
       t: 'fix',
       origin: 'nmea',

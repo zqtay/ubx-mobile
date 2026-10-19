@@ -111,7 +111,16 @@
     "flagAlmanac": "almanac",
     "flagUnhealthy": "unhealthy",
     "flagDiff": "differential corrections",
-    "multiSignal": "{{count}} signals"
+    "multiSignal": "{{count}} signals",
+    "showChart": "Show signal chart",
+    "showList": "Show list",
+    "chartA11y": "{{label}}, {{constellation}}, C/N0 {{cn0}}{{used}}",
+    "colSignal": "Signal",
+    "colResidual": "Residual",
+    "colUsed": "Used",
+    "colOrbit": "Orbit",
+    "colHealth": "Health",
+    "colCorr": "Corr"
   },
   "detail": {
     "title": "{{label}}  {{constellation}} {{svid}}",
@@ -179,7 +188,10 @@
     "legendNotUsed": "Not used",
     "legendCn0": "C/N0 (dB-Hz)",
     "noPosition": "{{count}} satellites without a known position are not shown.",
-    "plotA11y": "Sky plot with {{count}} satellites"
+    "plotA11y": "Sky plot with {{count}} satellites",
+    "headingUp": "Heading up (rotate with compass)",
+    "northUp": "North up",
+    "compassUnavailable": "Compass not available"
   },
   "status": {
     "satsSummary": "Sats used {{used}} · signal {{signal}} · view {{view}}",
@@ -207,12 +219,24 @@
     "time": "Time",
     "utc": "UTC",
     "local": "Local",
-    "timeValid": "Valid",
-    "timeInvalid": "Not valid",
+    "timeValid": "Time valid",
+    "timeInvalid": "Time not valid",
     "perConstellation": "Per constellation",
     "perConstellationHint": "used / signal / view",
     "copy": "Copy position",
-    "copied": "Position copied"
+    "copied": "Position copied",
+    "differential": "Differential corrections",
+    "fixOk": "Fix within accuracy masks",
+    "yes": "Yes",
+    "no": "No",
+    "validity": "Validity",
+    "dateValid": "Date valid",
+    "dateInvalid": "Date not valid",
+    "resolved": "fully resolved",
+    "unresolved": "not fully resolved",
+    "leapSeconds": "Leap seconds (GPS−UTC)",
+    "leapValue": "{{value}} s",
+    "leapDefault": "{{value}} s (default, not yet received)"
   },
   "device": {
     "receiver": "Receiver",
@@ -331,7 +355,42 @@
     "svLabelStyle": "Satellite labels",
     "svLabelUcenter": "u-center (G, R, E, B)",
     "svLabelRinex": "RINEX (G, R, E, C)",
-    "more": "More settings arrive with the features they control."
+    "showFlags": "Show constellation flags",
+    "showFlagsHint": "Operator flag next to each satellite label",
+    "coordinateFormat": "Coordinate format",
+    "coordDd": "Decimal",
+    "coordDms": "DMS",
+    "coordDdm": "DDM",
+    "units": "Units",
+    "metric": "Metric",
+    "imperial": "Imperial",
+    "display": "Display",
+    "refreshRate": "Screen refresh rate",
+    "satelliteTimeout": "Satellite timeout",
+    "satelliteTimeoutHint": "Remove a satellite after this long without data",
+    "keepScreenOn": "Keep screen on",
+    "keepScreenOnHint": "While a receiver is connected",
+    "skyDenseGrid": "Sky: dense grid",
+    "skyLabels": "Sky: satellite labels",
+    "skyTrails": "Sky: satellite trails",
+    "trailsOff": "Off",
+    "trails10m": "10 min",
+    "trails1h": "1 h",
+    "usb": "USB receivers",
+    "usbHint": "Applied when a receiver connects.",
+    "defaultBaud": "Baud rate",
+    "baudAuto": "Auto",
+    "probeUbx": "Probe for UBX",
+    "probeUbxHint": "Ask silent receivers for UBX data. Turn off for NMEA-only receivers that dislike unknown input.",
+    "ubxMode": "UBX data",
+    "ubxPoll": "Poll (safe)",
+    "ubxPeriodic": "Periodic output (RAM)",
+    "ubxPeriodicHint": "Poll: the receiver's settings are never changed. Periodic: the receiver sends data by itself; lower link load.",
+    "ubxPeriodicTitle": "Enable periodic output?",
+    "ubxPeriodicMessage": "This temporarily changes your receiver's message output settings (RAM only). The original settings come back when the receiver is power-cycled. Continue?",
+    "continue": "Continue",
+    "setDtrRts": "Set DTR/RTS on open",
+    "setDtrRtsHint": "Some adapters need these lines to power or enable the receiver."
   },
   "about": {
     "title": "About",
@@ -495,7 +554,8 @@
       "reverted": "Reverted to the saved settings.",
       "restarted": "Receiver restarted — waiting for fix.",
       "factoryReset": "Factory defaults restored.",
-      "failed": "The operation failed. Reconnect and review the settings."
+      "failed": "The operation failed. Reconnect and review the settings.",
+      "backedUp": "Backup saved. Share it to keep a copy outside the app."
     },
     "mismatchItem": "{{name}} is {{actual}}, expected {{expected}}",
     "rule": {
@@ -511,7 +571,58 @@
     },
     "autoDetect": "Detect again",
     "decrease": "Decrease {{name}}",
-    "increase": "Increase {{name}}"
+    "increase": "Increase {{name}}",
+    "backups": {
+      "title": "Backup & restore",
+      "entry": "Backup & restore",
+      "entryHint": "Save the configuration, restore an earlier one",
+      "create": "Back up now",
+      "paste": "Paste backup from clipboard",
+      "pasteFailed": "The clipboard does not contain a UBX Mobile configuration backup.",
+      "empty": "No backups yet. A backup is also taken automatically before the first change of a session.",
+      "kind": {
+        "auto": "Auto · before first change",
+        "manual": "Backup",
+        "imported": "Imported"
+      },
+      "keys_one": "{{count}} key",
+      "keys_other": "{{count}} keys",
+      "share": "Share",
+      "restore": "Restore",
+      "shareTitle": "UBX Mobile configuration backup",
+      "hint": "Backups are shared as JSON text (save it, e.g. to a notes app or e-mail). To restore one from outside the app, copy its text and use Paste."
+    },
+    "restore": {
+      "title": "Restore backup",
+      "notFound": "This backup no longer exists.",
+      "differentReceiver": "This backup comes from a different receiver ({{module}}). Settings may not apply in the same way.",
+      "layer": "Restore",
+      "layerRam": "Current values",
+      "layerSaved": "Saved values",
+      "reading": "Comparing with the receiver…",
+      "summary": "{{changes}} to change · {{unchanged}} already the same · {{unknown}} not supported (skipped)",
+      "changes": "Changes",
+      "unknown": "Not supported by this receiver",
+      "stage_one": "Stage {{count}} change",
+      "stage_other": "Stage {{count}} changes",
+      "stageHint": "The changes are staged like any other edit: review them, then Apply (and Save to keep them).",
+      "nothing": "The receiver already has these values."
+    },
+    "advanced": {
+      "title": "Advanced (all keys)",
+      "entry": "Advanced (all keys)",
+      "entryHint": "Every key the receiver reports, per layer",
+      "search": "Search by name, ID or group",
+      "count_one": "{{count}} key",
+      "count_other": "{{count}} keys",
+      "unit": "Unit: {{unit}}",
+      "enabled": "Enabled",
+      "unknownKey": "UBX Mobile does not know this key. It is edited as a raw number; check the u-blox interface description first.",
+      "newValue": "New value for {{name}}",
+      "stage": "Stage",
+      "invalid": "Not a valid {{type}} value (decimal, or hex with 0x).",
+      "useSaved": "Use saved value ({{value}})"
+    }
   },
   "map": {
     "waitingFix": "Waiting for a position fix…",
@@ -525,5 +636,29 @@
     "openCopyright": "© OpenStreetMap contributors. Open the copyright page",
     "copied": "Coordinates copied",
     "copyHint": "Long-press to copy the coordinates"
+  },
+  "console": {
+    "pause": "Pause",
+    "resume": "Resume",
+    "clear": "Clear",
+    "filter": "Filter",
+    "wrap": "Wrap long lines",
+    "paused": "Paused — {{count}} new messages",
+    "empty": "No messages yet. What the receiver sends appears here.",
+    "noMatch": "No messages match the filter.",
+    "newMessages": "↓ New messages",
+    "kind": {
+      "nmea": "NMEA",
+      "ubx": "UBX",
+      "rtcm": "RTCM3",
+      "error": "Errors",
+      "info": "Info"
+    },
+    "messages": "Messages",
+    "all": "All",
+    "decoded": "Decoded",
+    "noDecoder": "UBX Mobile has no decoder for this message.",
+    "payload_one": "Payload ({{count}} byte)",
+    "payload_other": "Payload ({{count}} bytes)"
   }
 }

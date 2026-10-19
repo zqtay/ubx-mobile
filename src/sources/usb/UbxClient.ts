@@ -15,6 +15,10 @@ export const PERIODIC_POLLS: readonly UbxMessage[] = [
   UBX.NAV_STATUS,
 ];
 
+/** Rarely changing data, polled every SLOW_POLL_TICKS scheduler ticks. */
+export const SLOW_POLLS: readonly UbxMessage[] = [UBX.NAV_TIMELS];
+const SLOW_POLL_TICKS = 30;
+
 /** Identity and RF status, polled once after detection. */
 export const IDENTITY_POLLS: readonly UbxMessage[] = [
   UBX.MON_VER,
@@ -44,7 +48,15 @@ const CONFIG_WRITABLE = new Set<number>(
 /** Messages acknowledged with ACK-ACK/NAK. CFG-RST is not acknowledged. */
 const ACKED = new Set<number>([UBX.CFG_VALSET, UBX.CFG_VALDEL, UBX.CFG_CFG].map(key));
 
-export type ConfigAction = 'apply' | 'save' | 'revert' | 'restart' | 'factory-reset' | 'restore';
+export type ConfigAction =
+  | 'apply'
+  | 'save'
+  | 'revert'
+  | 'restart'
+  | 'factory-reset'
+  | 'restore'
+  /** Opt-in periodic UBX output in RAM (REQ-SER-09). */
+  | 'periodic-output';
 
 /**
  * A configuration write (technical spec §6.6). Created only by the configuration service in
@@ -233,9 +245,11 @@ export class UbxClient {
   /** Starts polling navigation data every `intervalMs` (Poll mode, the default). */
   startScheduler(intervalMs = 1000): void {
     this.stopScheduler();
+    let ticks = 0;
     const tick = () => {
       if (this.paused) return;
-      for (const msg of PERIODIC_POLLS) {
+      const slow = ticks++ % SLOW_POLL_TICKS === 0 ? SLOW_POLLS : [];
+      for (const msg of [...PERIODIC_POLLS, ...slow]) {
         const target = this.effective(msg);
         if (!target) continue;
         const k = key(target);

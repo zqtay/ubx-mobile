@@ -165,6 +165,9 @@ export class GnssAccumulator {
       case 'session-restart':
         this.restartSession();
         return;
+      case 'console':
+        // The Console has its own store (SourceManager routes these); nothing to accumulate.
+        return;
       case 'stats':
         this.stats = e.stats;
         break;

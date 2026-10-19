@@ -160,6 +160,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** all Should requirements are done or explicitly deferred with a reason.
 
+**Status (2026-10-19):** 6.1–6.10 implemented; 400 tests pass (TS §15). Deviations: backups are shared as JSON text and imported by pasting, not as files (no new native modules, so a JS reload is enough); the font-scaling and greyscale checks of 6.7 are by design (shapes, letters, outlines) and need a visual check on the phone at font scale 1.3. **Open (phone):** Console with the BE-122/BZ-251 and the phone source, compass heading-up, keep-screen-on, landscape table, periodic output on the BE-122 (then power-cycle to confirm RAM only), a backup and restore round trip, and the advanced editor on the real key set (≈ 700 keys).
+
 ### M7 — Hardening & release (≈ 5 units)
 
 | # | Task | Ref |

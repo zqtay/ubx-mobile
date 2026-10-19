@@ -147,3 +147,12 @@ export function svLabel(
   }
   return `${prefix}${n}`;
 }
+
+/** Flag emoji for a constellation's operator (regional-indicator letters), e.g. 🇪🇺 for Galileo. */
+export function flagEmoji(constellation: Constellation): string | undefined {
+  const code = constellationMeta(constellation).flag;
+  if (!code) return undefined;
+  return String.fromCodePoint(
+    ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
+  );
+}

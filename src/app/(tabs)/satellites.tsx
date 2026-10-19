@@ -1,16 +1,19 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import type { Satellite } from '@/domain/types';
 import type { SatelliteSort } from '@/state/selectors';
 import { useSettings } from '@/state/settingsStore';
+import { SignalChart } from '@/ui/chart/SignalChart';
 import { AppText, DataGate } from '@/ui/components';
 import { useSatelliteView } from '@/ui/hooks/useSatelliteView';
 import { FilterBar } from '@/ui/satellites/FilterBar';
 import { COLUMNS, SatelliteRow } from '@/ui/satellites/SatelliteRow';
+import { SatelliteWideTable, WIDE_TABLE_MIN_WIDTH } from '@/ui/satellites/SatelliteWideTable';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { minTouchTarget, spacing } from '@/ui/theme/tokens';
 
@@ -29,37 +32,108 @@ export default function SatellitesScreen() {
 function SatelliteList() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const { sorted, counts, filter, sort, labelStyle, all } = useSatelliteView();
+  const { sorted, counts, filter, sort, labelStyle, all, showFlags } = useSatelliteView();
   const rows = useFrozenOrder(sorted);
+  const [chart, setChart] = useState(false);
+  // Landscape phones and tablets get the wide u-center table (REQ-SAT-09).
+  const wide = useWindowDimensions().width >= WIDE_TABLE_MIN_WIDTH;
   const openDetail = useCallback((key: string) => {
     router.push({ pathname: '/satellite/[key]', params: { key } });
   }, []);
 
+  const toggle = (
+    <Pressable
+      testID="view-toggle"
+      accessibilityRole="button"
+      accessibilityLabel={chart ? t('satellites.showList') : t('satellites.showChart')}
+      onPress={() => setChart(!chart)}
+      hitSlop={8}
+      style={styles.toggle}>
+      <MaterialCommunityIcons
+        name={chart ? 'format-list-bulleted' : 'chart-bar'}
+        size={24}
+        color={colors.primary}
+      />
+    </Pressable>
+  );
+
   return (
     <View style={styles.fill}>
       <View style={[styles.top, { backgroundColor: colors.bg }]}>
-        <FilterBar counts={counts} filter={filter} />
+        <FilterBar counts={counts} filter={filter} trailing={toggle} />
       </View>
+      {chart ? (
+        // Signal strength chart (REQ-SAT-11): same filter and sort as the list.
+        sorted.length > 0 ? (
+          <SignalChart sats={sorted} labelStyle={labelStyle} onPress={openDetail} />
+        ) : (
+          <AppText muted style={styles.empty}>
+            {all.length === 0 ? t('satellites.searching') : t('satellites.noMatch')}
+          </AppText>
+        )
+      ) : wide ? (
+        <SatelliteWideTable
+          sats={rows.items}
+          labelStyle={labelStyle}
+          showFlags={showFlags}
+          onPress={openDetail}
+        />
+      ) : (
+        <SatelliteTable
+          rows={rows}
+          sort={sort}
+          labelStyle={labelStyle}
+          showFlags={showFlags}
+          openDetail={openDetail}
+          emptyText={all.length === 0 ? t('satellites.searching') : t('satellites.noMatch')}
+        />
+      )}
+    </View>
+  );
+}
+
+function SatelliteTable({
+  rows,
+  sort,
+  labelStyle,
+  showFlags,
+  openDetail,
+  emptyText,
+}: {
+  rows: ReturnType<typeof useFrozenOrder>;
+  sort: SatelliteSort;
+  labelStyle: ReturnType<typeof useSatelliteView>['labelStyle'];
+  showFlags: boolean;
+  openDetail: (key: string) => void;
+  emptyText: string;
+}) {
+  return (
+    <>
       <ColumnHeader sort={sort} />
       <FlashList
         testID="satellite-list"
         data={rows.items}
         keyExtractor={(s) => s.key}
         renderItem={({ item }) => (
-          <SatelliteRow sat={item} labelStyle={labelStyle} onPress={openDetail} />
+          <SatelliteRow
+            sat={item}
+            labelStyle={labelStyle}
+            onPress={openDetail}
+            showFlag={showFlags}
+          />
         )}
-        extraData={labelStyle}
+        extraData={`${labelStyle}:${showFlags}`}
         onTouchStart={rows.freeze}
         onTouchEnd={rows.release}
         onScrollBeginDrag={rows.freeze}
         onMomentumScrollEnd={rows.release}
         ListEmptyComponent={
           <AppText muted style={styles.empty}>
-            {all.length === 0 ? t('satellites.searching') : t('satellites.noMatch')}
+            {emptyText}
           </AppText>
         }
       />
-    </View>
+    </>
   );
 }
 
@@ -139,6 +213,12 @@ function useFrozenOrder(sorted: Satellite[]) {
 }
 
 const styles = StyleSheet.create({
+  toggle: {
+    width: minTouchTarget,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   fill: {
     flex: 1,
   },

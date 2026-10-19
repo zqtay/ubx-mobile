@@ -17,6 +17,9 @@ export const LAYER_MASK = { RAM: 0x01, BBR: 0x02, FLASH: 0x04 } as const;
 /** At most 64 key/value pairs per message. */
 export const MAX_ITEMS = 64;
 
+/** CFG-VALGET key requesting every item of every group (answered in pages of 64). */
+export const ALL_KEYS = 0x0fffffff;
+
 export interface CfgItem {
   key: number;
   value: number;

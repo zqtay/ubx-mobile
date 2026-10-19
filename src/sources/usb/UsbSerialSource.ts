@@ -3,6 +3,7 @@ import type { EventSubscription } from 'expo-modules-core';
 import type { SourceKind, UsbDeviceInfo } from '@/domain/types';
 import { base64ToBytes, bytesToBase64 } from '@/protocols/base64';
 import { ProtocolPipeline } from '@/protocols/pipeline';
+
 import type { UsbDeviceRef } from '@/state/settingsStore';
 
 import type { ReceiverLink } from '@/config/link';
@@ -15,6 +16,7 @@ import type { GnssEventSink, GnssSource } from '../GnssSource';
 
 import { baudCandidates, detectBaud, type DetectionLink } from './detection';
 import { UbxClient } from './UbxClient';
+import { enablePeriodicOutput } from './periodicOutput';
 
 const MESSAGES = {
   unsupported: 'This device does not support USB host (OTG).',
@@ -36,6 +38,11 @@ export interface UsbSourceOptions {
   setDtrRts: boolean;
   /** Baud remembered for this device. */
   rememberedBaud?: number;
+  /**
+   * Enable periodic UBX output in RAM instead of polling (REQ-SER-09; Settings → USB → UBX
+   * data mode). Only with probeUbx.
+   */
+  periodicOutput?: boolean;
   /** Persist the detected baud. */
   onBaudDetected?: (ref: UsbDeviceRef, baud: number) => void;
   now?: () => number;
@@ -252,6 +259,13 @@ export class UsbSerialSource implements GnssSource {
     if (this.ubx && this.options.probeUbx && this.client) {
       const client = this.client;
       await client.pollIdentity();
+      if (this.options.periodicOutput && this.client === client && this.sessionId) {
+        const result = await enablePeriodicOutput(client, nativeUsb ? 'USB' : 'UART1');
+        if (result === 'enabled' || result === 'already') {
+          this.emit?.({ t: 'receiver', patch: { dataMode: 'periodic' } });
+        }
+      }
+      // Polling continues for whatever is not output periodically (the scheduler skips the rest).
       if (this.client === client && this.sessionId) client.startScheduler(1000);
     }
   }

@@ -1,5 +1,23 @@
 import { configAvailability } from '@/config/availability';
-import { backupItems, createBackup, listBackups } from '@/config/backups';
+import {
+  formatRawValue,
+  groupIdOf,
+  groupName,
+  keyType,
+  parseRawValue,
+  valueRange,
+} from '@/config/groups';
+import {
+  backupItems,
+  BackupFormatError,
+  createBackup,
+  differentReceiver,
+  listBackups,
+  parseBackup,
+  restorePlan,
+  savedItems,
+  storeBackup,
+} from '@/config/backups';
 import { ConfigService } from '@/config/ConfigService';
 import { KEY, msgoutKey, OUTPUT_MESSAGES, PM_MODE } from '@/config/keys';
 import { checkRules, estimatedOutputBytesPerSecond, navRateHz } from '@/config/rules';
@@ -79,7 +97,7 @@ describe('value codec (CFG-VALGET/VALSET)', () => {
   it('builds VALDEL and restores items from a backup', () => {
     const del = buildValDelFrame(6, [KEY.RATE_MEAS]);
     expect([...del.subarray(6, 14)]).toEqual([0, 6, 0, 0, 0x01, 0x00, 0x21, 0x30]);
-    const backup = createBackup('manual', {}, [{ key: KEY.RATE_MEAS, value: 200 }], 0);
+    const backup = createBackup('manual', {}, { ram: [{ key: KEY.RATE_MEAS, value: 200 }] }, 0);
     expect(backup.layers.ram).toEqual([{ id: '0x30210001', name: 'CFG-RATE-MEAS', value: 200 }]);
     expect(backupItems(backup)).toEqual([{ key: KEY.RATE_MEAS, value: 200 }]);
   });
@@ -495,6 +513,124 @@ describe('ConfigService on the simulated BE-122 (REQ-CFG)', () => {
   });
 });
 
+describe('backup & restore (REQ-CFG-16)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    storage.clearAll();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('reads every key with the wildcard in pages of 64, as u-center does', async () => {
+    const { service, native } = await session();
+    const before = native.written.length;
+    const ram = await settle(service.readAll(0));
+    expect(ram.size).toBe(BE122.size);
+    expect(ram).toEqual(BE122);
+    const pages = native.written.slice(before).filter((w) => w.cls === 0x06 && w.id === 0x8b);
+    expect(pages).toHaveLength(Math.ceil((BE122.size + 1) / 64));
+    // No flash on the simulated BE-122: the layer is NAKed and comes back empty.
+    expect((await settle(service.readAll(2))).size).toBe(0);
+  });
+
+  it('takes a full backup of all layers into the list', async () => {
+    const { service } = await session();
+    await settle(service.apply([{ key: KEY.NAVSPG_DYNMODEL, value: 4 }]));
+    const backup = await settle(service.backup());
+    expect(backup.kind).toBe('manual');
+    expect(backup.layers.ram).toHaveLength(BE122.size);
+    expect(backup.layers.bbr).toEqual([]);
+    expect(backup.layers.flash).toBeUndefined();
+    expect(backup.layers.default).toHaveLength(BE122.size);
+    expect(backupItems(backup).find((i) => i.key === KEY.NAVSPG_DYNMODEL)?.value).toBe(4);
+    expect(listBackups().map((b) => b.kind)).toEqual(['auto', 'manual']);
+  });
+
+  it('parses shared backups and rejects anything else', () => {
+    const original = createBackup(
+      'manual',
+      { module: 'BE-122' },
+      { ram: [{ key: KEY.RATE_MEAS, value: 100 }] },
+      0,
+    );
+    const parsed = parseBackup(JSON.stringify(original));
+    expect(parsed).toMatchObject({ kind: 'imported', receiver: { module: 'BE-122' } });
+    expect(backupItems(parsed)).toEqual([{ key: KEY.RATE_MEAS, value: 100 }]);
+    expect(() => parseBackup('hello')).toThrow(BackupFormatError);
+    expect(() => parseBackup('{"format":"other"}')).toThrow(BackupFormatError);
+    expect(() =>
+      parseBackup(JSON.stringify({ ...original, layers: { ram: [{ id: 'x', value: 1 }] } })),
+    ).toThrow(BackupFormatError);
+  });
+
+  it('plans a restore and prefers saved values over flash', () => {
+    const plan = restorePlan(
+      [
+        { key: KEY.RATE_MEAS, value: 1000 },
+        { key: KEY.RATE_NAV, value: 1 },
+        { key: 0x10ff0001, value: 1 },
+      ],
+      new Map([
+        [KEY.RATE_MEAS, 100],
+        [KEY.RATE_NAV, 1],
+      ]),
+    );
+    expect(plan).toEqual({
+      changes: [{ key: KEY.RATE_MEAS, from: 100, to: 1000 }],
+      unchanged: 1,
+      unknown: [0x10ff0001],
+    });
+    const b = createBackup(
+      'manual',
+      {},
+      {
+        ram: [],
+        flash: [
+          { key: KEY.RATE_MEAS, value: 500 },
+          { key: KEY.RATE_NAV, value: 2 },
+        ],
+        bbr: [{ key: KEY.RATE_MEAS, value: 200 }],
+      },
+    );
+    expect(savedItems(b)).toEqual([
+      { key: KEY.RATE_MEAS, value: 200 },
+      { key: KEY.RATE_NAV, value: 2 },
+    ]);
+    expect(savedItems(createBackup('manual', {}, { ram: [] }))).toBeUndefined();
+    expect(differentReceiver(b, {})).toBe(false);
+    expect(
+      differentReceiver({ ...b, receiver: { fwVersion: 'SPG 5.10' } }, { fwVersion: 'SPG 5.00' }),
+    ).toBe(true);
+  });
+
+  it('keeps the newest 20 backups', () => {
+    for (let i = 0; i < 25; i++) storeBackup(createBackup('manual', {}, { ram: [] }, i * 1000));
+    const all = listBackups();
+    expect(all).toHaveLength(20);
+    expect(all[0].createdAt).toBe(new Date(5000).toISOString());
+  });
+});
+
+describe('advanced key editor helpers (REQ-CFG-17)', () => {
+  it('groups, types, formats and parses raw keys', () => {
+    expect(groupName(groupIdOf(KEY.RATE_MEAS))).toBe('CFG-RATE');
+    expect(groupName(0x01)).toBe('Group 0x01');
+    expect(keyType(KEY.NAVSPG_INFIL_MINELEV)).toBe('I1'); // from the key database
+    expect(keyType(0x10a30001)).toBe('L'); // from the size bits
+    expect(keyType(0x40d00014)).toBe('U4');
+    expect(keyType(0x50000001)).toBe('U8');
+    expect(valueRange('I1')).toEqual({ min: -128, max: 127 });
+    expect(valueRange('R4')).toBeUndefined();
+    expect(formatRawValue(KEY.NAVSPG_DYNMODEL, 4)).toBe('4 (Automotive)');
+    expect(formatRawValue(KEY.RATE_MEAS, 100)).toBe('100');
+    expect(formatRawValue(KEY.RATE_MEAS, undefined)).toBe('—');
+    expect(parseRawValue(KEY.RATE_MEAS, '0x3E8')).toBe(1000);
+    expect(parseRawValue(KEY.RATE_MEAS, '70000')).toBeUndefined(); // U2
+    expect(parseRawValue(KEY.NAVSPG_INFIL_MINELEV, '-5')).toBe(-5);
+    expect(parseRawValue(KEY.RATE_MEAS, '1.5')).toBeUndefined();
+    expect(parseRawValue(KEY.RATE_MEAS, 'abc')).toBeUndefined();
+  });
+});
+
 describe('configuration store', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -550,6 +686,20 @@ describe('configuration store', () => {
     expect(s().lastOutcome).toMatchObject({ action: 'restart', status: 'done' });
     await settle(s().factoryReset());
     expect(s().ram.get(KEY.NAVSPG_DYNMODEL)).toBe(BE122.get(KEY.NAVSPG_DYNMODEL));
+
+    s().stageMany([
+      { key: KEY.NAVSPG_DYNMODEL, value: BE122.get(KEY.NAVSPG_DYNMODEL)! }, // same as RAM
+      { key: KEY.RATE_MEAS, value: 1000 },
+    ]);
+    expect([...s().staged]).toEqual([[KEY.RATE_MEAS, 1000]]);
+    await expect(settle(s().readCurrent([KEY.RATE_MEAS, 0x10ff0001]))).resolves.toEqual(
+      new Map([[KEY.RATE_MEAS, 100]]),
+    );
+    await expect(settle(s().backup())).resolves.toMatchObject({ kind: 'manual' });
+    await settle(s().loadAll());
+    expect(s()).toMatchObject({ allLoaded: true, status: 'ready' });
+    expect(s().ram.size).toBe(BE122.size);
+    expect(s().lastOutcome).toMatchObject({ action: 'backup', status: 'done' });
 
     s().reset();
     expect(s()).toMatchObject({ status: 'idle', port: undefined });

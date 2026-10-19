@@ -143,6 +143,17 @@ export function navStatus(ttffMs: number, iTOW = DEFAULT_ITOW): Uint8Array {
   return buildUbx(UBX.NAV_STATUS[0], UBX.NAV_STATUS[1], w.build());
 }
 
+/** NAV-TIMELS with the current leap-second count (offset 9) and its validity (flags bit 0). */
+export function navTimeLs(currLs: number, valid = true, iTOW = DEFAULT_ITOW): Uint8Array {
+  const w = new PayloadWriter(24)
+    .u4(0, iTOW)
+    .u1(4, 0)
+    .u1(8, 2)
+    .i1(9, currLs)
+    .u1(23, valid ? 1 : 0);
+  return buildUbx(UBX.NAV_TIMELS[0], UBX.NAV_TIMELS[1], w.build());
+}
+
 export function monVer(sw: string, hw: string, extensions: string[]): Uint8Array {
   const w = new PayloadWriter(40 + 30 * extensions.length).ascii(0, sw, 30).ascii(30, hw, 10);
   extensions.forEach((e, i) => w.ascii(40 + 30 * i, e, 30));

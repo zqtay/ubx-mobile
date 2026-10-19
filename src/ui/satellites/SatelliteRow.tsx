@@ -3,7 +3,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { constellationMeta, svLabel, type SvLabelStyle } from '@/domain/constellations';
+import { constellationMeta, flagEmoji, svLabel, type SvLabelStyle } from '@/domain/constellations';
 import type { Satellite } from '@/domain/types';
 import { AppText } from '@/ui/components';
 import { ConstellationBadge } from '@/ui/components/ShapeIcon';
@@ -22,6 +22,8 @@ export interface SatelliteRowProps {
   sat: Satellite;
   labelStyle: SvLabelStyle;
   onPress: (key: string) => void;
+  /** Show the operator's flag next to the label (Settings → Show constellation flags). */
+  showFlag?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export const SatelliteRow = memo(function SatelliteRow({
   sat,
   labelStyle,
   onPress,
+  showFlag,
 }: SatelliteRowProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
@@ -68,7 +71,9 @@ export const SatelliteRow = memo(function SatelliteRow({
       <View style={[styles.sv, { width: COLUMNS.sv }]}>
         <ConstellationBadge constellation={sat.constellation} />
         <AppText variant="mono" style={used ? styles.bold : undefined} numberOfLines={1}>
-          {label}
+          {showFlag && flagEmoji(sat.constellation)
+            ? `${flagEmoji(sat.constellation)}${label}`
+            : label}
         </AppText>
       </View>
       <View style={{ width: COLUMNS.cn0 }}>

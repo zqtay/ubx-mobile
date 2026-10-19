@@ -14,6 +14,17 @@ import type {
   StreamStats,
 } from './types';
 
+/** One line of the Console (functional spec §8): a frame, a decode error or a source summary. */
+export interface ConsoleEntry {
+  kind: 'nmea' | 'ubx' | 'rtcm' | 'error' | 'info';
+  /** Filter name, e.g. `GNRMC`, `UBX-NAV-PVT`, `RTCM3 1005`, `Location`. */
+  name: string;
+  /** Text shown in the list. */
+  text: string;
+  /** UBX frames: class, ID and payload, for the decoded detail. */
+  ubx?: { cls: number; id: number; payload: Uint8Array };
+}
+
 /** Who produced a fix / DOP update; used for precedence (technical spec §7.2). */
 export type FixOrigin = 'android' | 'ubx' | 'nmea';
 export type DopOrigin = 'android-nmea' | 'ubx' | 'nmea';
@@ -23,6 +34,8 @@ export type DopOrigin = 'android-nmea' | 'ubx' | 'nmea';
  * The accumulator is the only consumer; the UI never sees these directly.
  */
 export type GnssEvent =
+  /** Raw stream for the Console; not part of the GNSS state (routed by the SourceManager). */
+  | { t: 'console'; entries: ConsoleEntry[] }
   /** Partial fix update; fields not present are left unchanged. */
   | { t: 'fix'; fix: Partial<Omit<Fix, 'receivedAtMs'>>; origin: FixOrigin }
   | { t: 'dop'; dop: Dop; origin: DopOrigin }

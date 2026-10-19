@@ -29,6 +29,7 @@ import {
   decodeNavSat,
   decodeNavSig,
   decodeNavStatus,
+  decodeNavTimeLs,
   decodeNavSvInfo,
   decodeSecUniqId,
   type MonVer,
@@ -205,6 +206,18 @@ export function interpretUbx(
     const m = decodeNavStatus(payload);
     if (!m || m.ttffMs <= 0) return [];
     return [{ t: 'ttff', ms: m.ttffMs }];
+  }
+
+  if (isMessage(cls, id, UBX.NAV_TIMELS)) {
+    const m = decodeNavTimeLs(payload);
+    if (!m) return [];
+    return [
+      {
+        t: 'fix',
+        origin: 'ubx',
+        fix: { leapSeconds: m.currLs, leapSecondsValid: m.validCurrLs },
+      },
+    ];
   }
 
   if (isMessage(cls, id, UBX.NAV_SVINFO)) {

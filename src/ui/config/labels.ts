@@ -34,6 +34,7 @@ const OUTCOME_KEY: Record<string, string> = {
   'revert:applied': 'reverted',
   'restart:done': 'restarted',
   'factory-reset:done': 'factoryReset',
+  'backup:done': 'backedUp',
 };
 
 /** Banner after an action (functional spec §11.3, §11.5–11.7). */
