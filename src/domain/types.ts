@@ -227,6 +227,22 @@ export interface AndroidDeviceInfo {
   statusUpdates: number;
 }
 
+export type UsbDriverKind = 'cdc-acm' | 'ftdi' | 'cp210x' | 'pl2303' | 'ch34x' | 'unknown';
+
+/** USB descriptor and serial line of the USB source (REQ-DEV-03). */
+export interface UsbDeviceInfo {
+  vendorId: number;
+  productId: number;
+  productName?: string;
+  manufacturerName?: string;
+  serialNumber?: string;
+  deviceName: string;
+  driver: UsbDriverKind;
+  portIndex: number;
+  /** Detected/configured baud rate; undefined while detecting. Irrelevant for native USB (CDC-ACM). */
+  baud?: number;
+}
+
 /**
  * Everything the Device screen shows: receiver identity learned from the data stream plus
  * transport-specific details added by the source (Android phone info here; USB in M4).
@@ -234,6 +250,7 @@ export interface AndroidDeviceInfo {
 export interface DeviceInfo {
   receiver: ReceiverInfo;
   android?: AndroidDeviceInfo;
+  usb?: UsbDeviceInfo;
 }
 
 export type SourceKind = 'android' | 'usb' | 'replay';

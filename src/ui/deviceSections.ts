@@ -8,6 +8,8 @@ import { DASH, formatClock, formatDuration } from './format';
 /** One Device-screen card: a title and label/value rows. Shared by the screen and the share text. */
 export interface DeviceSection {
   title: string;
+  /** Explanatory caption under the title. */
+  hint?: string;
   rows: { label: string; value: string | number | undefined; mono?: boolean }[];
 }
 
@@ -97,6 +99,31 @@ export function deviceSections(t: TFunction, s: GnssSnapshot): DeviceSection[] {
   }
 
   const waiting = t('device.waiting');
+  const usb = s.device.usb;
+  if (usb) {
+    const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, '0');
+    const bridge = usb.driver !== 'cdc-acm';
+    sections.push({
+      title: bridge ? t('device.usbAdapter') : t('device.usbDevice'),
+      hint: bridge ? t('device.adapterHint') : undefined,
+      rows: [
+        { label: t('device.product'), value: usb.productName },
+        { label: t('device.manufacturer'), value: usb.manufacturerName },
+        {
+          label: t('device.vidPid'),
+          value: `${hex(usb.vendorId)}:${hex(usb.productId)}`,
+          mono: true,
+        },
+        { label: t('device.serialNumber'), value: usb.serialNumber, mono: true },
+        { label: t('device.driver'), value: usb.driver.toUpperCase() },
+        {
+          label: t('device.baud'),
+          value: !bridge ? t('device.baudNative') : (usb.baud ?? t('device.detecting')),
+          mono: true,
+        },
+      ],
+    });
+  }
   sections.push({
     title: t('device.receiver'),
     rows: [
@@ -180,6 +207,7 @@ export function deviceReportText(appName: string, sections: DeviceSection[], atM
   const lines = [`${appName} — ${new Date(atMs).toISOString()}`];
   for (const section of sections) {
     lines.push('', section.title);
+    if (section.hint) lines.push(`  (${section.hint})`);
     for (const row of section.rows) {
       lines.push(
         `  ${row.label}: ${row.value === undefined || row.value === '' ? DASH : row.value}`,

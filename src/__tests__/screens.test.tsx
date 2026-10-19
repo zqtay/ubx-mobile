@@ -204,6 +204,38 @@ describe('Device screen (REQ-DEV)', () => {
   });
 });
 
+describe('Device screen for USB receivers (REQ-DEV-03)', () => {
+  it('describes the USB adapter separately from the GNSS module', async () => {
+    const snap = demoSnapshot();
+    useGnssStore.setState(
+      {
+        ...snap,
+        source: 'usb',
+        device: {
+          ...snap.device,
+          usb: {
+            vendorId: 0x10c4,
+            productId: 0xea60,
+            productName: 'CP2102 USB to UART Bridge Controller',
+            manufacturerName: 'Silicon Labs',
+            deviceName: '/dev/bus/usb/001/002',
+            driver: 'cp210x',
+            portIndex: 0,
+            baud: 57600,
+          },
+        },
+      },
+      true,
+    );
+    await renderRouter(APP, { initialUrl: '/device' });
+    expect(screen.getByText('USB adapter')).toBeTruthy();
+    expect(screen.getByText(/This is the USB-to-serial adapter/)).toBeTruthy();
+    expect(screen.getByLabelText('VID:PID: 10C4:EA60')).toBeTruthy();
+    expect(screen.getByLabelText('Baud rate: 57600')).toBeTruthy();
+    expect(screen.getByLabelText('Firmware: SPG 5.10')).toBeTruthy();
+  });
+});
+
 describe('error banners (functional spec §10)', () => {
   it.each([
     ['E_PROVIDER_DISABLED', 'Turn on location'],

@@ -40,7 +40,16 @@
     "rationaleTitle": "Location permission",
     "rationaleBody": "UBX Mobile needs precise location to read satellite data from your phone's GNSS receiver. Location never leaves your device.",
     "rationaleContinue": "Continue",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "usbNone": "No USB serial devices found.",
+    "usbHelp": "Connect the receiver with a USB OTG adapter. For a TTL module such as the BE-122, use a USB-to-TTL adapter: adapter 5V → VCC, GND → GND, adapter RX → module TX, adapter TX → module RX.",
+    "usbUnsupported": "This phone does not support USB host (OTG).",
+    "usbUnavailable": "USB serial is not available in this build.",
+    "usbUnknownDevice": "Unknown USB serial device",
+    "baud": "Baud rate",
+    "baudAuto": "Auto",
+    "baudHint": "Auto tries common rates. Native USB receivers ignore the baud rate.",
+    "adapterNote": "USB-to-serial adapters are listed by the adapter's name, not the GNSS module's."
   },
   "dataState": {
     "waiting": "Waiting for data from {{source}}…",
@@ -271,7 +280,17 @@
     "startedAt": "Started at",
     "ttff": "TTFF",
     "locationUpdates": "Location updates",
-    "statusUpdates": "Satellite status updates"
+    "statusUpdates": "Satellite status updates",
+    "usbDevice": "USB device",
+    "usbAdapter": "USB adapter",
+    "adapterHint": "This is the USB-to-serial adapter. The GNSS module is shown under Receiver.",
+    "product": "Product",
+    "vidPid": "VID:PID",
+    "serialNumber": "Serial number",
+    "driver": "Driver",
+    "baud": "Baud rate",
+    "baudNative": "Native USB",
+    "detecting": "Detecting…"
   },
   "more": {
     "console": "Console",

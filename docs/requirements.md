@@ -275,7 +275,11 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 - Satellite status on the Android source depends on the phone's chipset and vendor implementation. Some phones report no NMEA, no carrier frequency, or capped C/N0 values.
 - u-blox receivers from **generation 8 (M8) onwards** are the primary UBX target. Generation 6/7 get best-effort support through NAV-SVINFO.
 - **Reference receiver: Beitian BE-122.** According to a reseller listing (no official datasheet found), it is a u-blox **M10 (M10050)** module: single-band L1 (GPS L1C/A, Galileo E1, BeiDou B1I/B1C, QZSS, SBAS), **TTL-level UART only**, default **38400 baud** (4800–921600), 1 Hz default update rate (up to 18 Hz), configuration kept in flash, VCC 3.6–5.5 V. What this means for the app:
-  - It has **no USB port**. It connects to the phone as: phone → USB OTG → **USB-to-TTL adapter (CP210x / CH34x / FTDI)** → BE-122 (adapter 5 V → VCC, GND → GND, adapter RX → module TX, adapter TX → module RX). The baud rate matters, and auto-baud (REQ-SER-05) is tried at 38400 first.
+  - It has **no USB port**. It connects to the phone as: phone → USB OTG → **USB-to-TTL adapter (CP210x / CH34x / FTDI)** → BE-122 (adapter 5 V → VCC, GND → GND, adapter RX → module TX, adapter TX → module RX). The baud rate matters (REQ-SER-05).
+  - **Measured configuration** (u-center 2 dumps, `docs/examples/be-122-dump.txt` and `bz-251-dump.txt`, both firmware SPG 5.10 / PROTVER 34.10, measurement rate 10 Hz, GLONASS disabled):
+    - **BE-122:** UART1 at **57600 baud** (not the 38400 of the listing), **NMEA output off and no UBX message enabled** — the module is silent until polled.
+    - **Beitian BZ-251:** UART1 at **115200 baud**, outputs NMEA (GGA, GSV, RMC, GSA, GLL, VTG) and UBX NAV-PVT every epoch.
+    - Consequences: auto-baud must probe silent rates with a UBX poll, not only listen; in Poll mode all data for the BE-122 comes from UBX polls.
   - As an M10 it uses the generation-9+ UBX interface (CFG-VALGET/VALSET, MON-RF, NAV-SAT, NAV-SIG).
   - Because its configuration is stored in flash, saving is the only permanent step and is always confirmed separately (§6.10 safety model).
 - Monitoring never changes the receiver's configuration. Changes happen only in the Configuration feature, through explicit user actions (REQ-SER-08, §6.10).

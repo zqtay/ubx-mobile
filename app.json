@@ -48,6 +48,7 @@
           "isAndroidMotionActivityEnabled": false
         }
       ],
+      "./plugins/withUsbHost",
       [
         "./plugins/withCmakeVersion",
         {

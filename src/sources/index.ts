@@ -1,13 +1,15 @@
 import type { SourceErrorCode } from '@/domain/types';
-import { useSettings } from '@/state/settingsStore';
+import { usbDeviceKey, useSettings } from '@/state/settingsStore';
 
 import AndroidGnss from '../../modules/android-gnss';
+import UsbSerial, { type UsbSerialDevice } from '../../modules/usb-serial';
 import { AndroidLocationSource } from './android/AndroidLocationSource';
 import { expoLocationPermissions } from './android/permissions';
 import type { GnssSource } from './GnssSource';
 import { buildDemoLog } from './replay/demoLog';
 import { ReplaySource } from './replay/ReplaySource';
 import { SourceManager } from './SourceManager';
+import { matchesRef, refOf, UsbSerialSource } from './usb/UsbSerialSource';
 
 /** Kinds of source the user can pick in the receiver sheet. */
 export type SourceChoice = 'phone' | 'usb' | 'demo';
@@ -38,7 +40,7 @@ function createSource(choice: SourceChoice): GnssSource {
     case 'phone':
       return new AndroidLocationSource();
     case 'usb':
-      throw new Error('USB receivers are not available yet.');
+      throw new Error('Choose a USB device: use startUsbSource().');
   }
 }
 
@@ -47,6 +49,49 @@ export async function startSource(choice: SourceChoice): Promise<void> {
   const source = createSource(choice);
   useSettings.getState().update({ lastSource: choice });
   await sourceManager.start(source);
+}
+
+/** Starts the USB source on a device and remembers it (REQ-SER-01..14, REQ-SRC-04). */
+export async function startUsbSource(device: UsbSerialDevice): Promise<void> {
+  const { usb, usbBauds, update } = useSettings.getState();
+  const source = new UsbSerialSource({
+    device,
+    baud: usb.defaultBaud,
+    probeUbx: usb.probeUbx,
+    setDtrRts: usb.setDtrRts,
+    rememberedBaud: usbBauds[usbDeviceKey(refOf(device))],
+    onBaudDetected: (ref, baud) => {
+      const state = useSettings.getState();
+      state.update({
+        usbBauds: { ...state.usbBauds, [usbDeviceKey(ref)]: baud },
+        lastUsbDevice: ref,
+      });
+    },
+  });
+  update({ lastSource: 'usb', lastUsbDevice: refOf(device) });
+  await sourceManager.start(source);
+}
+
+export type UsbAvailability = 'ok' | 'unsupported' | 'unavailable';
+
+/** Whether USB receivers can be used on this phone/build (functional spec §10). */
+export function usbAvailability(): UsbAvailability {
+  if (!UsbSerial) return 'unavailable';
+  return UsbSerial.isUsbHostSupported() ? 'ok' : 'unsupported';
+}
+
+export async function listUsbDevices(): Promise<UsbSerialDevice[]> {
+  return UsbSerial ? UsbSerial.listDevices() : [];
+}
+
+/** Subscribes to USB attach/detach to keep device lists current. Returns an unsubscribe function. */
+export function watchUsbDevices(onChange: () => void): () => void {
+  if (!UsbSerial) return () => undefined;
+  const subs = [
+    UsbSerial.addListener('onAttached', onChange),
+    UsbSerial.addListener('onDetached', onChange),
+  ];
+  return () => subs.forEach((s) => s.remove());
 }
 
 export async function stopSource(): Promise<void> {
@@ -59,7 +104,18 @@ export async function stopSource(): Promise<void> {
  * the phone source needs location permission to be granted already.
  */
 export async function restoreLastSource(): Promise<void> {
-  const last = useSettings.getState().lastSource;
+  // Opened by plugging in a receiver (USB_DEVICE_ATTACHED intent): use that device (REQ-SER-13).
+  const launchDevice = UsbSerial ? await UsbSerial.getLaunchDevice().catch(() => null) : null;
+  if (launchDevice) return startUsbSource(launchDevice);
+
+  const { lastSource: last, lastUsbDevice } = useSettings.getState();
+  if (last === 'usb' && lastUsbDevice) {
+    const device = (await listUsbDevices()).find(
+      (d) => d.hasPermission && matchesRef(d, lastUsbDevice),
+    );
+    if (device) await startUsbSource(device);
+    return;
+  }
   if (last === 'demo') await startSource('demo');
   if (last === 'phone' && (await expoLocationPermissions.check()) === 'granted') {
     await startSource('phone');

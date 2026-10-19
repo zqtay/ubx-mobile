@@ -96,7 +96,9 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 | 4.6 | Source sheet: USB device list, baud selector, permission errors, empty state with OTG help. | FS §2, §2.1 |
 | 4.7 | Launch-on-attach flow. | REQ-SER-13 |
 
-**Exit:** UC-2 works with the **BE-122 through a USB-to-TTL adapter**: (a) at the default 38400 baud with auto-baud, (b) with UBX probing turned off, so it behaves like a generic NMEA receiver, and (c) after its baud rate was changed in u-center on a PC *without saving to flash*, to exercise auto-baud. Unplugging and replugging recovers. A code review confirms the allow-list. The CDC-ACM path (u-blox native USB) is checked only by unit tests and the probe table unless such a receiver becomes available.
+**Exit:** UC-2 works with the **BE-122 through a USB-to-TTL adapter**: (a) at its configured 57600 baud with auto-baud (it outputs nothing until polled), (b) with UBX probing turned off, so it behaves like a generic NMEA receiver, and (c) after its baud rate was changed in u-center on a PC *without saving to flash*, to exercise auto-baud. Unplugging and replugging recovers. A code review confirms the allow-list. The CDC-ACM path (u-blox native USB) is checked only by unit tests and the probe table unless such a receiver becomes available.
+
+**Status (2026-10-19):** 4.1–4.7 implemented. `modules/usb-serial` (Kotlin, usb-serial-for-android 3.10.0) compiles; `plugins/withUsbHost.js` adds the USB host feature, attach intent filter and `device_filter.xml`. `UsbSerialSource` (permission → open → detect → identity polls → 1 Hz polling; detach → stale → auto-reconnect; background close/reopen), `UbxClient` (monitoring-only allow-list, retries, NAK/timeout learning, fallbacks) and the receiver sheet's USB section are covered by tests against simulated receivers modelled on the BE-122 and BZ-251 dumps — including a test that every byte written is a read-only poll. **Open:** hardware runs with the BE-122 / BZ-251 via a USB-to-TTL adapter (exit criteria above).
 
 ### M5 — Device information for USB receivers (≈ 4 units)
 

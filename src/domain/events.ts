@@ -1,6 +1,7 @@
 import type {
   AndroidDeviceInfo,
   ConnectionState,
+  UsbDeviceInfo,
   Constellation,
   Dop,
   Fix,
@@ -47,6 +48,8 @@ export type GnssEvent =
   | { t: 'receiver'; patch: Partial<ReceiverInfo> }
   /** Phone details from the Android source. */
   | { t: 'android'; patch: Partial<AndroidDeviceInfo> }
+  /** USB descriptor and line settings from the USB source. */
+  | { t: 'usb'; patch: Partial<UsbDeviceInfo> }
   | { t: 'info'; level: InfoLevel; text: string; origin: string }
   | { t: 'connection'; state: ConnectionState }
   | { t: 'stats'; stats: StreamStats };

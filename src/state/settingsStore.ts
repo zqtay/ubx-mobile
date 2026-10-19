@@ -35,6 +35,18 @@ export interface SatelliteFilterSettings {
 
 export type SourceChoiceSetting = 'phone' | 'usb' | 'demo';
 
+/** Identifies a USB device across replugs (deviceId changes; VID/PID/serial do not). */
+export interface UsbDeviceRef {
+  vendorId: number;
+  productId: number;
+  /** Absent on many cheap adapters (e.g. CH340); then VID:PID alone identifies the device. */
+  serialNumber?: string;
+}
+
+export function usbDeviceKey(ref: UsbDeviceRef): string {
+  return `${ref.vendorId}:${ref.productId}:${ref.serialNumber ?? ''}`;
+}
+
 export interface Settings {
   theme: ThemePreference;
   svLabelStyle: SvLabelStyle;
@@ -50,6 +62,10 @@ export interface Settings {
   usb: UsbSettings;
   /** Last started source, restarted on launch (REQ-SRC-04). */
   lastSource: SourceChoiceSetting | undefined;
+  /** Last USB receiver, reconnected on launch when attached and permitted (REQ-SRC-04). */
+  lastUsbDevice: UsbDeviceRef | undefined;
+  /** Detected baud rate per USB device key (technical spec §6.7). */
+  usbBauds: Record<string, number>;
   satelliteSort: SatelliteSort;
   satelliteFilter: SatelliteFilterSettings;
 }
@@ -73,6 +89,8 @@ export const defaultSettings: Settings = {
     setDtrRts: true,
   },
   lastSource: undefined,
+  lastUsbDevice: undefined,
+  usbBauds: {},
   satelliteSort: 'sv',
   satelliteFilter: { constellations: [], usedOnly: false, hasSignalOnly: false },
 };
@@ -88,7 +106,7 @@ export type SettingsState = Settings & SettingsActions;
 
 export const SETTINGS_STORAGE_KEY = 'settings';
 /** Bump when the persisted shape changes, and handle the old version in `migrateSettings`. */
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 
 /**
  * Upgrades persisted settings from any earlier schema version and fills in

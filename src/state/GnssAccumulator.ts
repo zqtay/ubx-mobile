@@ -16,6 +16,7 @@ import type {
   SignalObs,
   SourceKind,
   StreamStats,
+  UsbDeviceInfo,
 } from '@/domain/types';
 import { emptyStreamStats } from '@/protocols/stream/StreamDecoder';
 
@@ -63,6 +64,7 @@ export class GnssAccumulator {
   private session?: SessionInfo;
   private receiver: ReceiverInfo = {};
   private android?: AndroidDeviceInfo;
+  private usb?: UsbDeviceInfo;
   private stats: StreamStats = emptyStreamStats();
   /** Used set from the latest NMEA GSA batch, applied to satellites first seen afterwards. */
   private nmeaUsed = new Set<SatKey>();
@@ -88,6 +90,7 @@ export class GnssAccumulator {
     this.session = { startedAtMs: this.now() };
     this.receiver = {};
     this.android = undefined;
+    this.usb = undefined;
     this.stats = emptyStreamStats();
     this.nmeaUsed = new Set();
     this.dirty = true;
@@ -140,6 +143,9 @@ export class GnssAccumulator {
         break;
       case 'receiver':
         this.receiver = { ...this.receiver, ...definedOnly(e.patch) };
+        break;
+      case 'usb':
+        this.usb = { ...(this.usb as UsbDeviceInfo), ...definedOnly(e.patch) };
         break;
       case 'android':
         this.android = { ...(this.android as AndroidDeviceInfo), ...definedOnly(e.patch) };
@@ -196,9 +202,11 @@ export class GnssAccumulator {
       dop: this.dop,
       session: this.session,
       satellites,
-      device: this.android
-        ? { receiver: this.receiver, android: this.android }
-        : { receiver: this.receiver },
+      device: {
+        receiver: this.receiver,
+        ...(this.android ? { android: this.android } : {}),
+        ...(this.usb ? { usb: this.usb } : {}),
+      },
       stats: this.stats,
       stale: this.connection.kind === 'disconnected' || this.connection.kind === 'error',
     };

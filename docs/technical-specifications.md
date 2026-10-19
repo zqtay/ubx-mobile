@@ -596,12 +596,13 @@ open(port, baud = remembered ?? 38400 for bridges / n.a. for CDC)   # 38400 = u-
 
 - "Valid frames" means frames that pass their checksum. Junk alone never counts as detection.
 - Auto-baud uses `setParameters` without closing the port and listens 1.5 s per rate (≈ 14 s worst case).
+- **As built (M4, `src/sources/usb/detection.ts`):** order = remembered baud, then 38400, 115200, 57600, 9600, 230400, 460800, 921600, 4800, 19200. At each rate the detector listens 1.2 s for ≥ 2 valid frames; if the rate is silent and *Probe for UBX* is on, it sends a MON-VER poll and waits 1 s for any UBX frame. Probing is required because a receiver can be configured to output nothing (the BE-122). A fixed baud setting tries only that rate; native USB (CDC-ACM) tries one rate. The detected baud is saved per device (`VID:PID:serial`) in settings v3.
 - The detected baud is remembered per device, keyed by `VID:PID:serial`. Many cheap CH34x adapters report no USB serial number, so for those the key falls back to `VID:PID`.
 
 **Reference receiver (Beitian BE-122, u-blox M10) — expected behaviour:**
 
 - It arrives through a UART bridge (CP210x/CH34x/FTDI adapter). The `driver` is the adapter's, and the USB descriptor names the adapter, not the GNSS module. The Device screen must therefore make clear that the **USB device** card describes the adapter and the **Receiver** card describes the module (from MON-VER).
-- At the default 38400 baud, auto-baud should find it on the first try.
+- Its UART runs at 57600 with all output off (see requirements §9): auto-baud finds it at the third rate by probing (about 6 s); after that, the remembered baud finds it on the first try.
 - PROTVER ≥ 34 → generation-9+ paths: CFG-VALGET, MON-RF (not MON-HW), NAV-SAT, NAV-SIG (single-band, one L1/E1/B1 signal per SV).
 - Periodic-mode keys, if the user opts in: the `*_UART1` variants.
 

@@ -34,6 +34,11 @@ function DeviceContent() {
       <Button variant="secondary" label={t('device.share')} onPress={share} />
       {sections.map((section) => (
         <Card key={section.title} title={section.title}>
+          {section.hint ? (
+            <AppText variant="caption" muted>
+              {section.hint}
+            </AppText>
+          ) : null}
           {section.rows.map((row) => (
             <KeyValueRow key={row.label} label={row.label} value={row.value} mono={row.mono} />
           ))}
