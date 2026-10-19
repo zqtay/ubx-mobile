@@ -55,7 +55,10 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "check": "npm run typecheck && npm run lint && npm test -- --ci"
+    "check": "npm run typecheck && npm run lint && npm test -- --ci",
+    "licenses": "node scripts/generate-licenses.mjs",
+    "bench": "jest --testMatch \"**/bench/**/*.bench.ts\" --testPathIgnorePatterns /node_modules/ --coverage=false",
+    "release:apk": "node scripts/build-release.mjs"
   },
   "private": true,
   "jest": {

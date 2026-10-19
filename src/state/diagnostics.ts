@@ -32,3 +32,13 @@ export const useDiagnostics = create<DiagnosticsState>((set) => ({
 export function logDiagnostic(entry: Omit<LogEntry, 'atMs'>): void {
   useDiagnostics.getState().add(entry);
 }
+
+/** Plain-text report of the log for sharing (oldest first). */
+export function diagnosticsReport(entries: readonly LogEntry[], header: string): string {
+  const lines = entries.map((e) => {
+    const time = new Date(e.atMs).toISOString();
+    const details = e.details ? `\n    ${e.details}` : '';
+    return `${time} ${e.level.toUpperCase().padEnd(7)} [${e.area}] ${e.message}${details}`;
+  });
+  return [header, '', ...lines].join('\n');
+}

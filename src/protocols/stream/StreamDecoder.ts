@@ -23,9 +23,18 @@ const DOLLAR = 0x24;
 const BANG = 0x21;
 const CR = 0x0d;
 const LF = 0x0a;
+const STAR = 0x2a;
 const UBX_SYNC1 = 0xb5;
 const UBX_SYNC2 = 0x62;
 const RTCM_PREAMBLE = 0xd3;
+
+/** Value of a hex digit byte (either case), or a large negative number when it is not one. */
+function hexValue(c: number): number {
+  if (c >= 0x30 && c <= 0x39) return c - 0x30;
+  if (c >= 0x41 && c <= 0x46) return c - 0x37;
+  if (c >= 0x61 && c <= 0x66) return c - 0x57;
+  return -0x1000;
+}
 
 export function emptyStreamStats(): StreamStats {
   return {
@@ -125,34 +134,41 @@ export class StreamDecoder {
   private tryNmea(rxMs: number): Step {
     const { buf, start, end } = this;
     const limit = Math.min(end, start + MAX_NMEA_LENGTH);
+    // One pass over the bytes (hot path at high baud rates): validate, find the last '*' and
+    // the XOR of everything before it, without building strings per character.
     let lf = -1;
+    let cr = -1;
+    let star = -1;
+    let sum = 0;
+    let sumAtStar = 0;
     for (let i = start + 1; i < limit; i++) {
       const c = buf[i];
       if (c === LF) {
         lf = i;
         break;
       }
-      // Only printable ASCII (and CR right before LF) may appear inside a sentence.
-      if (c === CR) continue;
+      // Only printable ASCII may appear inside a sentence; CR only right before LF.
+      if (c === CR) {
+        if (cr < 0) cr = i;
+        continue;
+      }
+      if (cr >= 0) return { status: 'invalid' };
       if (c < 0x20 || c > 0x7e) return { status: 'invalid' };
       if (c === DOLLAR || c === BANG) return { status: 'invalid' };
+      if (c === STAR) {
+        star = i;
+        sumAtStar = sum;
+      }
+      sum ^= c;
     }
     if (lf < 0) {
       return end - start >= MAX_NMEA_LENGTH ? { status: 'invalid' } : { status: 'need-more' };
     }
 
-    let stop = lf;
-    while (stop > start && buf[stop - 1] === CR) stop--;
-    let text = '';
-    for (let i = start; i < stop; i++) text += String.fromCharCode(buf[i]);
-    if (text.indexOf('\r') >= 0) return { status: 'invalid' };
-
-    const star = text.lastIndexOf('*');
-    if (star >= 0 && star === text.length - 3) {
-      const expected = parseInt(text.slice(star + 1), 16);
-      let sum = 0;
-      for (let i = 1; i < star; i++) sum ^= text.charCodeAt(i);
-      if (Number.isNaN(expected) || expected !== sum) {
+    const stop = cr >= 0 ? cr : lf;
+    if (star >= 0 && star === stop - 3) {
+      const expected = (hexValue(buf[star + 1]) << 4) | hexValue(buf[star + 2]);
+      if (expected < 0 || expected !== sumAtStar) {
         this.stats.nmeaChecksumErrors += 1;
         return { status: 'invalid' };
       }
@@ -161,7 +177,8 @@ export class StreamDecoder {
     } else {
       this.stats.nmeaNoChecksum += 1;
     }
-    if (text.length < 6) return { status: 'invalid' };
+    if (stop - start < 6) return { status: 'invalid' };
+    const text = String.fromCharCode.apply(null, buf.subarray(start, stop) as unknown as number[]);
     this.stats.nmeaFrames += 1;
     return {
       status: 'frame',

@@ -37,7 +37,7 @@ The reference screenshots in [examples/](examples/) are a guide, not a template:
 > **Terminology:** user-facing text calls a source a **GNSS receiver** ("Choose a GNSS receiver", "No receiver"). "GPS" is used only for the GPS constellation itself, never as a synonym for GNSS, so the wording stays consistent with the Satellites, Device and Configuration screens. This spec and the code keep the internal term **source** (Source sheet, `GnssSource`).
 
 - **Bottom tabs** (in order): `Status`, `Satellites`, `Sky`, `Map`, `Device`, `More`. Six tabs fit a 360 dp wide phone (60 dp each); if labels get truncated at large font scales, the tab bar shows icons only.
-- **More** contains: **Receiver configuration** (u-blox only, §11), Console, Signal chart (if not on the Satellites screen), Recording (Could), Settings, Help, About.
+- **More** contains: **Receiver configuration** (u-blox only, §11), Console, Recording (Could), Settings, **Help** (connecting a USB receiver/OTG, TTL wiring, power, baud rate, phone receiver, troubleshooting, configuration safety), About (version, diagnostics log with Share and Clear, privacy note, open-source licences).
 - **Source status chip** (header, top-right, every main screen): source icon (📱 phone / 🔌 USB / ▶ replay) + short state text, e.g. `USB · 3D Fix`, `Phone · No fix`, `USB · Disconnected`. Tapping it opens the **Source sheet** (§2).
 - On launch:
   - First launch, or no remembered source → **Source sheet** opens automatically.

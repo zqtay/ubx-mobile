@@ -53,3 +53,7 @@ src/
   __tests__/      Screen-level tests (kept out of src/app so they are not routes)
 plugins/          Expo config plugins (native project tweaks applied at prebuild)
 ```
+
+## Release
+
+Signed APKs for sideloading are built with `npm run release:apk` after a one-time key setup; see [docs/release.md](docs/release.md).

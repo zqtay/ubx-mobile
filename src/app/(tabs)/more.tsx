@@ -42,6 +42,13 @@ export default function MoreScreen() {
         />
         {divider}
         <ListItem
+          icon="help-circle-outline"
+          title={t('more.help')}
+          subtitle={t('more.helpHint')}
+          onPress={() => router.push('/help' as Href)}
+        />
+        {divider}
+        <ListItem
           icon="information-outline"
           title={t('more.about')}
           subtitle={t('more.aboutHint')}

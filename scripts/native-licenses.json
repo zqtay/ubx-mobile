@@ -1,0 +1,39 @@
+[
+  {
+    "name": "usb-serial-for-android",
+    "version": "3.10.0",
+    "license": "MIT",
+    "repository": "https://github.com/mik3y/usb-serial-for-android",
+    "note": "USB serial drivers (CDC-ACM, CP210x, CH34x, FTDI, PL2303)"
+  },
+  {
+    "name": "Hermes JavaScript engine",
+    "license": "MIT",
+    "repository": "https://github.com/facebook/hermes"
+  },
+  {
+    "name": "Fresco (image loading)",
+    "license": "MIT",
+    "repository": "https://github.com/facebook/fresco"
+  },
+  {
+    "name": "OkHttp / Okio",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/square/okhttp"
+  },
+  {
+    "name": "MMKV",
+    "license": "BSD-3-Clause",
+    "repository": "https://github.com/Tencent/MMKV"
+  },
+  {
+    "name": "AndroidX libraries",
+    "license": "Apache-2.0",
+    "repository": "https://developer.android.com/jetpack/androidx"
+  },
+  {
+    "name": "Kotlin standard library and coroutines",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/JetBrains/kotlin"
+  }
+]

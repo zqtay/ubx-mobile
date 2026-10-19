@@ -343,7 +343,9 @@
     "about": "About",
     "aboutHint": "Version and licences",
     "config": "Receiver configuration",
-    "configHint": "Rates, constellations, messages, navigation"
+    "configHint": "Rates, constellations, messages, navigation",
+    "help": "Help",
+    "helpHint": "USB receivers, wiring, power, baud rate"
   },
   "settings": {
     "title": "Settings",
@@ -398,7 +400,14 @@
     "build": "Build",
     "description": "GNSS monitoring and diagnostics for your phone's receiver and external u-blox / NMEA receivers over USB.",
     "mapPrivacy": "The Map screen loads map tiles from OpenStreetMap (tile.openstreetmap.org) while it is open. The requests show which area is being viewed, never the exact position. Nothing else leaves the device.",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "licenses": "Open-source licences",
+    "licensesHint": "Components used by UBX Mobile",
+    "diagnostics": "Diagnostics log",
+    "diagnosticsHint": "{{count}} entries: errors, disconnects and configuration changes. Share it when reporting a problem.",
+    "shareDiagnostics": "Share log",
+    "clearDiagnostics": "Clear",
+    "diagnosticsTitle": "UBX Mobile diagnostics log"
   },
   "common": {
     "notAvailable": "—",
@@ -668,5 +677,69 @@
     "divider": "Resize the message list and detail panel",
     "received": "Received",
     "messageTime": "Message time"
+  },
+  "licenses": {
+    "title": "Open-source licences",
+    "intro": "UBX Mobile is built with these {{count}} open-source components.",
+    "native": "Android library",
+    "version": "Version",
+    "license": "Licence",
+    "noText": "This package does not include a licence file. It is distributed under the {{license}} licence; see the repository for the full text.",
+    "mapData": "Map data",
+    "mapDataText": "Map tiles © OpenStreetMap contributors, available under the Open Database License (ODbL)."
+  },
+  "help": {
+    "title": "Help",
+    "otg": {
+      "title": "Connecting a USB receiver",
+      "body": [
+        "Your phone must support USB host (OTG). Connect the receiver with a USB-C cable or an OTG adapter.",
+        "Android asks for permission the first time. Tick “Always open UBX Mobile” to skip the question next time; plugging the receiver in then opens the app directly."
+      ]
+    },
+    "wiring": {
+      "title": "Modules with a serial (TTL) port",
+      "body": [
+        "Modules like the Beitian BE-122 have no USB port. Use a USB-to-TTL adapter (CP2102, CH340, FTDI or PL2303) with 3.3 V logic levels.",
+        "Wiring: adapter 5 V → module VCC (check the module's supply range), GND → GND, adapter RX → module TX, adapter TX → module RX. RX and TX must be crossed."
+      ]
+    },
+    "power": {
+      "title": "Power",
+      "body": [
+        "The phone powers the receiver through its USB port. Most receivers need well under 100 mA, but some phones limit or cut OTG power, especially in battery saver.",
+        "If the receiver keeps disconnecting or restarting, use a powered USB hub or an OTG Y-cable."
+      ]
+    },
+    "baud": {
+      "title": "Baud rate",
+      "body": [
+        "Auto-detect tries the rate remembered for the device first, then the common rates (38400 is the u-blox default, then 115200, 57600, 9600 and others). Silent receivers are found by asking for their version over UBX.",
+        "If the Console shows garbage or nothing, set a fixed rate in Settings → USB receivers. Measured examples: Beitian BE-122 57600, BZ-251 115200."
+      ]
+    },
+    "phone": {
+      "title": "Phone receiver",
+      "body": [
+        "The built-in receiver needs precise location permission and Location turned on.",
+        "Indoors you may see few or no satellites. Outdoors the first fix usually takes 5–30 seconds."
+      ]
+    },
+    "noData": {
+      "title": "No data?",
+      "body": [
+        "“No USB serial devices found”: check the cable and adapter; on some phones OTG must be switched on in the system settings.",
+        "No bytes at all: check power and the TX/RX wiring. Garbage in the Console: the baud rate is wrong.",
+        "The Console (More → Console) shows exactly what the receiver sends."
+      ]
+    },
+    "config": {
+      "title": "Changing receiver settings",
+      "body": [
+        "Apply changes only the receiver's working memory; a power cycle undoes them. Save makes them permanent.",
+        "A backup is taken automatically before the first change of each connection (Receiver configuration → Backup & restore).",
+        "If the receiver stops answering after a change (e.g. the baud rate), power-cycle it: unsaved changes are undone. Then reconnect with auto-detect."
+      ]
+    }
   }
 }

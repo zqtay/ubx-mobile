@@ -282,6 +282,30 @@ describe('GnssAccumulator (technical spec §7.2)', () => {
   });
 });
 
+describe('published satellites stay immutable (performance: in-place patching)', () => {
+  const signal = (cn0: number): GnssEvent => ({
+    t: 'signals',
+    signals: [{ key: 'GPS:14', constellation: 'GPS', svid: 14, code: 'L1CA', label: 'L1C/A', cn0 }],
+  });
+
+  it('patches only objects the UI has not received yet', () => {
+    const { acc } = setup();
+    acc.apply(sats('ubx-nav-sat', [obs('GPS:14', { cn0: 41 })]));
+    acc.apply(signal(41)); // same refresh interval: patched in place
+    const first = acc.snapshot().satellites[0];
+    expect(first.signals[0].cn0).toBe(41);
+
+    acc.apply(signal(20)); // after the snapshot: must not touch `first`
+    const second = acc.snapshot().satellites[0];
+    expect(first.signals[0].cn0).toBe(41);
+    expect(second.signals[0].cn0).toBe(20);
+    expect(second).not.toBe(first);
+
+    acc.apply({ t: 'used', scope: 'all', keys: [] }); // no change for UBX origin
+    expect(acc.snapshot().satellites[0]).toBe(second);
+  });
+});
+
 describe('commit loop (REQ-NFR-03)', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => {

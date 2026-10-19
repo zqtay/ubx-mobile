@@ -55,6 +55,11 @@ export class GnssAccumulator {
   private source: SourceKind | null = null;
   private connection: ConnectionState = { kind: 'idle' };
   private sats = new Map<SatKey, Satellite>();
+  /**
+   * Satellite objects created since the last snapshot. They are not visible to the UI yet, so
+   * they may be patched in place; published objects are always replaced (immutable for React).
+   */
+  private unpublished = new WeakSet<Satellite>();
   private fix?: Fix;
   private fixRank = 0;
   private fixMs = 0;
@@ -190,7 +195,7 @@ export class GnssAccumulator {
       );
       if (fresh.length !== sat.signals.length) {
         const cn0 = sat.origin === 'nmea' && fresh.length > 0 ? maxCn0(fresh) : sat.cn0;
-        this.sats.set(key, { ...sat, signals: fresh, cn0 });
+        this.patch(sat, { signals: fresh, cn0 });
         changed = true;
       }
     }
@@ -201,6 +206,7 @@ export class GnssAccumulator {
   snapshot(): GnssSnapshot {
     if (!this.dirty && this.cached) return this.cached;
     const satellites = [...this.sats.values()].sort(compareSatellites);
+    this.unpublished = new WeakSet();
     this.cached = {
       source: this.source,
       connection: this.connection,
@@ -240,7 +246,7 @@ export class GnssAccumulator {
       if (used === undefined && origin === 'nmea') {
         used = existing?.origin === 'nmea' ? existing.used : this.nmeaUsed.has(obs.key);
       }
-      this.sats.set(obs.key, {
+      this.put({
         ...fields,
         cn0,
         used,
@@ -265,21 +271,23 @@ export class GnssAccumulator {
     for (const [key, list] of bySat) {
       const first = list[0];
       const existing = this.sats.get(key);
-      const sigs: SignalObs[] = list.map(
-        ({ key: _k, constellation: _c, svid: _s, glonassFcn: _g, ...sig }) => ({
-          ...sig,
-          lastSeenMs: sig.lastSeenMs ?? now,
-        }),
-      );
+      // Explicit fields rather than object rest: this runs for every signal of every epoch.
+      const sigs: SignalObs[] = list.map((s) => ({
+        code: s.code,
+        label: s.label,
+        carrierHz: s.carrierHz,
+        cn0: s.cn0,
+        quality: s.quality,
+        used: s.used,
+        prResidualM: s.prResidualM,
+        health: s.health,
+        corrSource: s.corrSource,
+        lastSeenMs: s.lastSeenMs ?? now,
+      }));
       if (existing) {
-        this.sats.set(key, {
-          ...existing,
-          signals: sigs,
-          cn0: existing.cn0 ?? maxCn0(sigs),
-          lastSeenMs: now,
-        });
+        this.patch(existing, { signals: sigs, cn0: existing.cn0 ?? maxCn0(sigs), lastSeenMs: now });
       } else {
-        this.sats.set(key, {
+        this.put({
           key,
           constellation: first.constellation,
           svid: first.svid,
@@ -295,6 +303,17 @@ export class GnssAccumulator {
     }
   }
 
+  private put(sat: Satellite): void {
+    this.sats.set(sat.key, sat);
+    this.unpublished.add(sat);
+  }
+
+  /** Updates fields of a satellite: in place if unpublished, otherwise as a new object. */
+  private patch(sat: Satellite, fields: Partial<Satellite>): void {
+    if (this.unpublished.has(sat)) Object.assign(sat, fields);
+    else this.put({ ...sat, ...fields });
+  }
+
   private applyUsed(scope: 'all' | string, keys: SatKey[]): void {
     const set = new Set(keys);
     this.nmeaUsed = set;
@@ -302,7 +321,7 @@ export class GnssAccumulator {
       if (sat.origin !== 'nmea') continue;
       if (scope !== 'all' && sat.constellation !== scope) continue;
       const used = set.has(key);
-      if (sat.used !== used) this.sats.set(key, { ...sat, used });
+      if (sat.used !== used) this.patch(sat, { used });
     }
   }
 

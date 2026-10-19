@@ -174,6 +174,8 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Exit:** the release candidate passes the acceptance checklist (§5).
 
+**Status (2026-10-19):** software side done; 413 tests pass. 7.1: desktop benchmark (`npm run bench`) at 921600 baud / 10 Hz / 60 SVs / 120 signals ≈ 1% of a Node core, ≈ 8% of the JS thread estimated for a phone (budget 15%) after three optimisations (TS §7.4); the decoder fallback is not needed. 7.4: unused permissions blocked (storage, SYSTEM_ALERT_WINDOW, VIBRATE; INTERNET kept for map tiles); open-source licences in About, generated from the bundle's source map (`npm run licenses`, 68 components) plus native libraries and the OSM attribution; Help screen (More → Help: OTG, wiring, power, baud, troubleshooting, configuration safety); the diagnostics log now records source errors, disconnects and (rate-limited) decode errors and can be shared from About (REQ-LOG-03). 7.5: release signing plugin with a guard against debug-signed release builds (checked with a Gradle dry run), `npm run release:apk`, [release.md](release.md) (key creation and backup, versioning, verification, sideloading and upgrade instructions). **Open (needs you):** create and back up the release key; 7.1 Hermes profiling and 7.2/7.3 hardware matrix and 2 h soak tests on the phone; set version 1.0.0 / versionCode when the acceptance checklist passes; build and verify the first signed APK.
+
 ### Optional — Could items (backlog, after v1.0)
 
 | Item | Ref | Est. |

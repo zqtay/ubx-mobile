@@ -39,6 +39,9 @@ function RootStack() {
         <Stack.Screen name="console" options={{ title: t('screens.console.title') }} />
         <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
         <Stack.Screen name="about" options={{ title: t('about.title') }} />
+        <Stack.Screen name="help" options={{ title: t('help.title') }} />
+        <Stack.Screen name="licenses/index" options={{ title: t('licenses.title') }} />
+        <Stack.Screen name="licenses/[index]" options={{ title: t('licenses.title') }} />
         <Stack.Screen name="config/index" options={{ title: t('config.title') }} />
         <Stack.Screen name="config/[section]" options={{ title: t('config.title') }} />
         <Stack.Screen name="config/backups" options={{ title: t('config.backups.title') }} />
