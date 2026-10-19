@@ -304,7 +304,8 @@
     "ago": "{{age}} ago",
     "messages": "Messages",
     "messagesHint": "Rate over the last 5 s · count since connecting",
-    "copied": "Copied"
+    "copied": "Copied",
+    "configure": "Configure receiver"
   },
   "more": {
     "console": "Console",
@@ -312,7 +313,9 @@
     "settings": "Settings",
     "settingsHint": "Theme, units, USB options",
     "about": "About",
-    "aboutHint": "Version and licences"
+    "aboutHint": "Version and licences",
+    "config": "Receiver configuration",
+    "configHint": "Rates, constellations, messages, navigation"
   },
   "settings": {
     "title": "Settings",
@@ -333,6 +336,153 @@
     "description": "GNSS monitoring and diagnostics for your phone's receiver and external u-blox / NMEA receivers over USB."
   },
   "common": {
-    "notAvailable": "—"
+    "notAvailable": "—",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "on": "On",
+    "off": "Off"
+  },
+  "config": {
+    "title": "Receiver configuration",
+    "unavailable": {
+      "notUsb": "Requires a connected u-blox receiver",
+      "notConnected": "Waiting for the receiver to connect",
+      "notUblox": "Requires a u-blox receiver (this one only sends NMEA)",
+      "protocolTooOld": "This receiver uses the legacy configuration interface, which UBX Mobile does not support yet"
+    },
+    "loading": "Reading configuration…",
+    "error": {
+      "timeout": "The receiver did not answer. Check the connection and try again.",
+      "failed": "Couldn't read the configuration.",
+      "unavailable": "Configuration is not available for this receiver."
+    },
+    "link": "{{port}} · {{baud}} Bd",
+    "linkUsb": "USB",
+    "unsavedCount": "● {{count}} unsaved",
+    "allSaved": "All settings saved",
+    "unsavedBadge": "● unsaved",
+    "sections": "Settings",
+    "actions": "Actions",
+    "section": {
+      "rate": "Rate & timing",
+      "port": "Port & protocols",
+      "gnss": "Constellations",
+      "messages": "Message output",
+      "navigation": "Navigation",
+      "nmea": "NMEA options"
+    },
+    "summary": {
+      "messages_one": "{{count}} message",
+      "messages_other": "{{count}} messages",
+      "none": "None"
+    },
+    "setting": {
+      "measRate": "Measurement rate",
+      "navRatio": "Navigation ratio",
+      "timeRef": "Time reference",
+      "baud": "Baud rate",
+      "inUbx": "Input: UBX",
+      "inNmea": "Input: NMEA",
+      "outUbx": "Output: UBX",
+      "outNmea": "Output: NMEA",
+      "gps": "GPS",
+      "galileo": "Galileo",
+      "beidou": "BeiDou",
+      "glonass": "GLONASS",
+      "qzss": "QZSS",
+      "sbas": "SBAS",
+      "dynModel": "Dynamic model",
+      "fixMode": "Fix mode",
+      "minElev": "Minimum elevation",
+      "minCno": "Minimum C/N0",
+      "nCnoThrs": "Satellites needed above C/N0",
+      "utcStandard": "UTC standard",
+      "nmeaVersion": "NMEA version",
+      "svNumbering": "SV numbering",
+      "highPrecision": "High precision",
+      "mainTalker": "Main talker ID",
+      "gsvTalker": "GSV talker ID"
+    },
+    "help": {
+      "measRate": "How often the receiver measures. M10 receivers support up to about 10 Hz with few constellations.",
+      "navRatio": "A navigation solution every N measurements.",
+      "baud": "The app follows the receiver to the new rate and returns to the old one if it does not answer.",
+      "dynModel": "Motion the receiver expects; filters out implausible movement.",
+      "minElev": "Satellites below this elevation are not used.",
+      "minCno": "Satellites weaker than this are not used."
+    },
+    "locked": {
+      "ubx": "UBX Mobile needs UBX to talk to the receiver"
+    },
+    "unit": {
+      "everyNth": "per solution; 0 = off"
+    },
+    "note": {
+      "gnss": "Applying restarts the GNSS subsystem: satellites drop out and come back.",
+      "messages": "Enabling NAV-PVT, NAV-SAT or NAV-SIG lets UBX Mobile stop polling them (lower link load).",
+      "empty": "This receiver reports none of these settings."
+    },
+    "restart": {
+      "title": "Restart receiver",
+      "hint": "Hot keeps all data. Warm clears ephemeris. Cold clears ephemeris, almanac, position and time.",
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold"
+    },
+    "save": {
+      "label": "Save permanently",
+      "hint": "Keep the current settings after a power cycle",
+      "confirmTitle": "Make these changes permanent?",
+      "confirm": "Save"
+    },
+    "revert": {
+      "label": "Revert to saved",
+      "hint": "Undo changes that are not saved",
+      "confirmTitle": "Undo {{count}} unsaved changes?",
+      "confirm": "Revert"
+    },
+    "factory": {
+      "label": "Factory reset",
+      "hint": "Erase saved settings and restore defaults",
+      "confirmTitle": "Factory reset?",
+      "confirmMessage": "Erase all saved settings and restore u-blox factory defaults? The receiver will restart and its baud rate may return to the default.",
+      "confirm": "Erase and reset"
+    },
+    "staged": {
+      "count_one": "{{count}} change",
+      "count_other": "{{count}} changes",
+      "discard": "Discard",
+      "apply": "Apply",
+      "working": "Working…",
+      "confirmTitle": "Apply {{count}} changes?",
+      "leaveTitle": "Discard {{count}} unapplied changes?"
+    },
+    "change": "{{name}}: {{from}} → {{to}}",
+    "outcome": {
+      "applied": "Applied (not saved). Save to keep after a power cycle.",
+      "rejected": "The receiver rejected the change. Nothing was changed.",
+      "mismatch": "Applied, but the receiver reports different values: {{details}}",
+      "timeout": "No answer from the receiver; the change was not confirmed.",
+      "baudFailed": "The receiver did not accept the new baud rate; still at the old rate.",
+      "lost": "Lost contact. Power-cycle the receiver to restore the saved baud rate.",
+      "saved": "Saved. The receiver keeps these settings after a power cycle.",
+      "reverted": "Reverted to the saved settings.",
+      "restarted": "Receiver restarted — waiting for fix.",
+      "factoryReset": "Factory defaults restored.",
+      "failed": "The operation failed. Reconnect and review the settings."
+    },
+    "mismatchItem": "{{name}} is {{actual}}, expected {{expected}}",
+    "rule": {
+      "lockoutUbxIn": "UBX input must stay on for this port: UBX Mobile needs it to talk to the receiver.",
+      "lockoutUbxOut": "UBX output must stay on for this port: UBX Mobile needs it to talk to the receiver.",
+      "lockoutNoOutput": "At least one output protocol must stay on.",
+      "noConstellation": "Enable at least one constellation.",
+      "rateInvalid": "The measurement period must be between 25 and 65535 ms.",
+      "rateHigh": "{{hz}} Hz is more than M10 receivers support with several constellations; the receiver may reject it or drop constellations.",
+      "throughput": "Output (about {{bytes}} B/s) may exceed {{baud}} baud. Increase the baud rate or disable messages."
+    },
+    "autoDetect": "Detect again",
+    "decrease": "Decrease {{name}}",
+    "increase": "Increase {{name}}"
   }
 }

@@ -12,18 +12,24 @@ export interface ListItemProps {
   title: string;
   subtitle?: string;
   onPress: () => void;
+  /** Greyed out and not pressable; the subtitle should say why. */
+  disabled?: boolean;
+  /** Small text before the chevron, e.g. an "unsaved" badge. */
+  badge?: string;
 }
 
 /** Navigation row with icon, title, optional subtitle and chevron. */
-export function ListItem({ icon, title, subtitle, onPress }: ListItemProps) {
+export function ListItem({ icon, title, subtitle, onPress, disabled, badge }: ListItemProps) {
   const { colors } = useAppTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+      accessibilityLabel={[title, subtitle, badge].filter(Boolean).join('. ')}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
       android_ripple={{ color: colors.surfaceAlt }}
-      style={styles.row}>
+      style={[styles.row, disabled && styles.disabled]}>
       <MaterialCommunityIcons name={icon} size={24} color={colors.primary} />
       <View style={styles.text}>
         <AppText variant="label">{title}</AppText>
@@ -33,6 +39,11 @@ export function ListItem({ icon, title, subtitle, onPress }: ListItemProps) {
           </AppText>
         ) : null}
       </View>
+      {badge ? (
+        <AppText variant="caption" color={colors.warning}>
+          {badge}
+        </AppText>
+      ) : null}
       <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textMuted} />
     </Pressable>
   );
@@ -49,5 +60,8 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     gap: 2,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

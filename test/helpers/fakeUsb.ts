@@ -23,6 +23,7 @@ import {
 import { UBX } from '@/protocols/ubx/ids';
 
 import type { UsbOpenOptions, UsbSerialDevice, UsbSerialEvents } from '../../modules/usb-serial';
+import { ConfigSim, type SimConfigOptions } from './configSim';
 
 export interface SimReceiver {
   baud: number;
@@ -33,6 +34,8 @@ export interface SimReceiver {
   /** Sentences/frames it outputs on its own every `periodMs` (empty = silent). */
   periodic?: () => Uint8Array;
   periodMs?: number;
+  /** Simulated configuration database (CFG-VALGET/VALSET/…); absent = config messages unanswered. */
+  config?: SimConfigOptions;
 }
 
 const ascii = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));
@@ -99,11 +102,19 @@ export class FakeUsbNative {
     { deviceId: number; baud: number; timer?: ReturnType<typeof setInterval> }
   >();
   private nextSession = 1;
+  /** The receiver's configuration database, when `receiver.config` is set. */
+  readonly config?: ConfigSim;
+  /** A copy: the simulated receiver's baud rate changes with its configuration. */
+  receiver: SimReceiver;
 
-  constructor(
-    public receiver: SimReceiver,
-    device: Partial<UsbSerialDevice> = {},
-  ) {
+  constructor(receiver: SimReceiver, device: Partial<UsbSerialDevice> = {}) {
+    this.receiver = { ...receiver };
+    if (receiver.config) {
+      this.config = new ConfigSim(receiver.config, (baud) => {
+        // undefined = the receiver went silent (garbage at any phone baud rate).
+        this.receiver.baud = baud ?? -1;
+      });
+    }
     this.devices = [
       {
         deviceId: 1002,
@@ -155,6 +166,11 @@ export class FakeUsbNative {
       this.written.push({ cls: f.cls, id: f.id, payloadLength: f.payload.length });
       // At the wrong baud rate the receiver hears garbage and stays silent.
       if (s.baud !== this.receiver.baud || !this.receiver.ubx) continue;
+      const configReplies = f.cls === 0x06 ? this.config?.handle(f.id, f.payload) : undefined;
+      if (configReplies) {
+        for (const r of configReplies) void Promise.resolve().then(() => this.data(sessionId, r));
+        continue;
+      }
       const nak = this.receiver.nak?.some(([c, i]) => c === f.cls && i === f.id);
       const reply = nak ? buildUbx(0x05, 0x00, Uint8Array.of(f.cls, f.id)) : response(f.cls, f.id);
       // A plain promise, not queueMicrotask: Jest's fake timers would hold that back.

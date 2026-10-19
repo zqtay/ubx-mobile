@@ -1,4 +1,7 @@
+import { ConfigService } from '@/config/ConfigService';
 import type { SourceErrorCode } from '@/domain/types';
+import { createConfigStore } from '@/state/configStore';
+import { useGnssStore } from '@/state/gnssStore';
 import { usbDeviceKey, useSettings } from '@/state/settingsStore';
 
 import AndroidGnss from '../../modules/android-gnss';
@@ -29,6 +32,34 @@ useSettings.subscribe((s, prev) => {
   }
 });
 
+const configServices = new WeakMap<GnssSource, ConfigService>();
+
+/**
+ * Configuration service for the connected u-blox receiver (technical spec §13), or undefined
+ * when the active source is not a USB u-blox receiver. One service per source, so the automatic
+ * backup is taken once per connection.
+ */
+export function getConfigService(): ConfigService | undefined {
+  const source = sourceManager.current;
+  if (!(source instanceof UsbSerialSource)) return undefined;
+  const existing = configServices.get(source);
+  if (existing) return existing;
+  const link = source.configLink();
+  if (!link) return undefined;
+  const r = useGnssStore.getState().device.receiver;
+  const service = new ConfigService(link, {
+    module: r.module,
+    fwVersion: r.fwVersion,
+    protocolVersion: r.protocolVersion,
+    uniqueId: r.uniqueId,
+  });
+  configServices.set(source, service);
+  return service;
+}
+
+/** Receiver configuration state for the configuration screens. */
+export const useConfigStore = createConfigStore(getConfigService);
+
 export function createDemoSource(): GnssSource {
   return new ReplaySource(() => buildDemoLog(), { label: 'Demo receiver', loop: true });
 }
@@ -48,6 +79,7 @@ function createSource(choice: SourceChoice): GnssSource {
 export async function startSource(choice: SourceChoice): Promise<void> {
   const source = createSource(choice);
   useSettings.getState().update({ lastSource: choice });
+  useConfigStore.getState().reset();
   await sourceManager.start(source);
 }
 
@@ -69,6 +101,7 @@ export async function startUsbSource(device: UsbSerialDevice): Promise<void> {
     },
   });
   update({ lastSource: 'usb', lastUsbDevice: refOf(device) });
+  useConfigStore.getState().reset();
   await sourceManager.start(source);
 }
 
@@ -96,6 +129,7 @@ export function watchUsbDevices(onChange: () => void): () => void {
 
 export async function stopSource(): Promise<void> {
   useSettings.getState().update({ lastSource: undefined });
+  useConfigStore.getState().reset();
   await sourceManager.stop();
 }
 

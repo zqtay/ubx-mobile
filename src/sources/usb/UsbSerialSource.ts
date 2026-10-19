@@ -5,6 +5,8 @@ import { base64ToBytes, bytesToBase64 } from '@/protocols/base64';
 import { ProtocolPipeline } from '@/protocols/pipeline';
 import type { UsbDeviceRef } from '@/state/settingsStore';
 
+import type { ReceiverLink } from '@/config/link';
+
 import UsbSerialNative, {
   type UsbSerialDevice,
   type UsbSerialModule,
@@ -144,6 +146,44 @@ export class UsbSerialSource implements GnssSource {
       return;
     }
     await this.connect(device);
+  }
+
+  /**
+   * Connection to a u-blox receiver for the configuration feature (technical spec §13), or
+   * undefined when not connected to one. Getters always reflect the current session.
+   */
+  configLink(): ReceiverLink | undefined {
+    const native = this.native;
+    if (!native || !this.sessionId || !this.client || !this.ubx) return undefined;
+    const nativeUsb = this.device.driver === 'cdc-acm';
+
+    const source = this;
+    return {
+      port: nativeUsb ? 'USB' : 'UART1',
+      get localBaud() {
+        return nativeUsb ? undefined : source.baud;
+      },
+      get client() {
+        if (!source.client) throw new Error('Receiver disconnected');
+        return source.client;
+      },
+      setLocalBaud: async (baud: number) => {
+        if (!source.sessionId) return;
+        await native.setParameters(source.sessionId, { baudRate: baud });
+        source.pipeline.decoder.reset();
+      },
+      confirmBaud: (baud: number) => {
+        source.baud = baud;
+        source.emit?.({ t: 'usb', patch: { baud } });
+        source.options.onBaudDetected?.(source.ref, baud);
+      },
+      restartSession: () => source.emit?.({ t: 'session-restart' }),
+      redetect: async () => {
+        await source.closePort();
+        source.baud = undefined;
+        await source.connect(source.device);
+      },
+    };
   }
 
   /** Permission → open → detect → poll. */

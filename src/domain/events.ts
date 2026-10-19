@@ -52,4 +52,6 @@ export type GnssEvent =
   | { t: 'usb'; patch: Partial<UsbDeviceInfo> }
   | { t: 'info'; level: InfoLevel; text: string; origin: string }
   | { t: 'connection'; state: ConnectionState }
+  /** The receiver was restarted (hot/warm/cold): clear satellites and TTFF (REQ-CFG-14). */
+  | { t: 'session-restart' }
   | { t: 'stats'; stats: StreamStats };

@@ -162,6 +162,9 @@ export class GnssAccumulator {
       case 'connection':
         this.connection = e.state;
         break;
+      case 'session-restart':
+        this.restartSession();
+        return;
       case 'stats':
         this.stats = e.stats;
         break;

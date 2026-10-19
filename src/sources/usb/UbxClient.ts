@@ -36,6 +36,43 @@ const MONITOR_POLLABLE = new Set<number>(
 
 export class MonitoringChannelError extends Error {}
 
+/** Messages the configuration channel may send (functional spec §11; never UPD-* / firmware). */
+const CONFIG_WRITABLE = new Set<number>(
+  [UBX.CFG_VALSET, UBX.CFG_VALDEL, UBX.CFG_CFG, UBX.CFG_RST].map(key),
+);
+
+/** Messages acknowledged with ACK-ACK/NAK. CFG-RST is not acknowledged. */
+const ACKED = new Set<number>([UBX.CFG_VALSET, UBX.CFG_VALDEL, UBX.CFG_CFG].map(key));
+
+export type ConfigAction = 'apply' | 'save' | 'revert' | 'restart' | 'factory-reset' | 'restore';
+
+/**
+ * A configuration write (technical spec §6.6). Created only by the configuration service in
+ * response to a user action; the monitoring code never constructs one.
+ */
+export class ConfigWriteRequest {
+  constructor(
+    readonly action: ConfigAction,
+    readonly frames: readonly Uint8Array[],
+    readonly description: string,
+  ) {
+    for (const f of frames) {
+      if (f.length < 8 || !CONFIG_WRITABLE.has((f[2] << 8) | f[3])) {
+        throw new MonitoringChannelError(
+          `${ubxMessageName(f[2], f[3])} is not allowed on the configuration channel`,
+        );
+      }
+    }
+  }
+}
+
+export type FrameOutcome = 'ack' | 'nak' | 'timeout' | 'sent';
+
+export interface ConfigWriteResult {
+  ok: boolean;
+  outcomes: FrameOutcome[];
+}
+
 /**
  * Builds a frame for the monitoring channel (REQ-SER-08). Only polls of read-only messages and
  * CFG-VALGET (a configuration read) are allowed; anything that could change the receiver —
@@ -94,6 +131,12 @@ export class UbxClient {
   private readonly failures = new Map<number, number>();
   private readonly lastUnsolicited = new Map<number, number>();
   private readonly lastSeen = new Map<number, number>();
+  private readonly ackWaiters = new Map<number, (outcome: 'ack' | 'nak') => void>();
+  private readonly frameWaiters = new Set<{
+    match: (f: Extract<DecodedFrame, { kind: 'ubx' }>) => boolean;
+    resolve: (f: Extract<DecodedFrame, { kind: 'ubx' }>) => void;
+  }>();
+  private queue: Promise<unknown> = Promise.resolve();
   private scheduler?: ReturnType<typeof setInterval>;
   private paused = false;
 
@@ -112,10 +155,25 @@ export class UbxClient {
     if (frame.kind !== 'ubx') return;
     const k = (frame.cls << 8) | frame.id;
     this.lastSeen.set(k, this.now());
-    if (k === key(UBX.ACK_NAK) && frame.payload.length >= 2) {
+    for (const w of this.frameWaiters) {
+      if (w.match(frame)) {
+        this.frameWaiters.delete(w);
+        w.resolve(frame);
+      }
+    }
+    const isAck = k === key(UBX.ACK_ACK);
+    if ((isAck || k === key(UBX.ACK_NAK)) && frame.payload.length >= 2) {
       const target = (frame.payload[0] << 8) | frame.payload[1];
-      this.unsupported.add(target);
-      this.settle(target, false);
+      const waiter = this.ackWaiters.get(target);
+      if (waiter) {
+        this.ackWaiters.delete(target);
+        waiter(isAck ? 'ack' : 'nak');
+      }
+      // Only a NAK answering one of our polls means "unsupported".
+      if (!isAck && this.pending.has(target)) {
+        this.unsupported.add(target);
+        this.settle(target, false);
+      }
       return;
     }
     if (this.pending.has(k)) {
@@ -204,9 +262,116 @@ export class UbxClient {
     if (paused) for (const k of [...this.pending.keys()]) this.settle(k, false);
   }
 
+  /** Waits for the next UBX frame matching `match`, or undefined after `timeoutMs`. */
+  waitForFrame(
+    match: (f: Extract<DecodedFrame, { kind: 'ubx' }>) => boolean,
+    timeoutMs: number,
+  ): Promise<Extract<DecodedFrame, { kind: 'ubx' }> | undefined> {
+    return new Promise((resolve) => {
+      const waiter = {
+        match,
+        resolve: (f: Extract<DecodedFrame, { kind: 'ubx' }> | undefined) => {
+          clearTimeout(timer);
+          resolve(f);
+        },
+      };
+      const timer = setTimeout(() => {
+        this.frameWaiters.delete(waiter);
+        resolve(undefined);
+      }, timeoutMs);
+      this.frameWaiters.add(waiter);
+    });
+  }
+
+  /**
+   * Reads configuration values (CFG-VALGET, read-only, monitoring channel). Requests are
+   * serialised because responses carry no request identifier. Resolves the response payload,
+   * 'nak' (e.g. an unknown key) or 'timeout'.
+   */
+  valget(payload: Uint8Array, timeoutMs = 1500): Promise<Uint8Array | 'nak' | 'timeout'> {
+    const run = async () => {
+      const frame = buildMonitoringFrame(UBX.CFG_VALGET, payload);
+      const isNak = (f: Extract<DecodedFrame, { kind: 'ubx' }>) =>
+        f.cls === UBX.ACK_NAK[0] &&
+        f.id === UBX.ACK_NAK[1] &&
+        f.payload[0] === UBX.CFG_VALGET[0] &&
+        f.payload[1] === UBX.CFG_VALGET[1];
+      const response = this.waitForFrame(
+        (f) =>
+          (f.cls === UBX.CFG_VALGET[0] &&
+            f.id === UBX.CFG_VALGET[1] &&
+            f.payload.length >= 4 &&
+            f.payload[1] === payload[1]) ||
+          isNak(f),
+        timeoutMs,
+      );
+      await this.send(frame).catch(() => undefined);
+      const f = await response;
+      if (!f) return 'timeout' as const;
+      return isNak(f) ? ('nak' as const) : f.payload;
+    };
+    const result = this.queue.then(run, run);
+    this.queue = result.catch(() => undefined);
+    return result;
+  }
+
+  /**
+   * Sends a configuration write (configuration channel, technical spec §6.6). Polling pauses for
+   * the duration; each acknowledged message must be ACKed before the next is sent, and the write
+   * stops at the first NAK.
+   */
+  configure(request: ConfigWriteRequest, ackTimeoutMs = 2000): Promise<ConfigWriteResult> {
+    const run = async (): Promise<ConfigWriteResult> => {
+      const wasPaused = this.paused;
+      this.setPaused(true);
+      const outcomes: FrameOutcome[] = [];
+      try {
+        for (const frame of request.frames) {
+          const k = (frame[2] << 8) | frame[3];
+          if (!ACKED.has(k)) {
+            await this.send(frame);
+            outcomes.push('sent');
+            continue;
+          }
+          const ack = new Promise<FrameOutcome>((resolve) => {
+            const timer = setTimeout(() => {
+              this.ackWaiters.delete(k);
+              resolve('timeout');
+            }, ackTimeoutMs);
+            this.ackWaiters.set(k, (o) => {
+              clearTimeout(timer);
+              resolve(o);
+            });
+          });
+          await this.send(frame);
+          const outcome = await ack;
+          outcomes.push(outcome);
+          if (outcome !== 'ack') break;
+        }
+      } finally {
+        this.setPaused(wasPaused);
+      }
+      return {
+        ok:
+          outcomes.length === request.frames.length &&
+          outcomes.every((o) => o === 'ack' || o === 'sent'),
+        outcomes,
+      };
+    };
+    const result = this.queue.then(run, run);
+    this.queue = result.catch(() => undefined);
+    return result;
+  }
+
   /** Stops the scheduler and fails all pending polls. */
   dispose(): void {
     this.stopScheduler();
+    for (const w of [...this.frameWaiters]) w.resolve(undefined as never);
+    this.frameWaiters.clear();
+    for (const [k, w] of [...this.ackWaiters]) {
+      this.ackWaiters.delete(k);
+      w('nak');
+    }
     for (const k of [...this.pending.keys()]) this.settle(k, false);
   }
 

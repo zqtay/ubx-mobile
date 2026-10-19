@@ -1,14 +1,19 @@
 import * as Clipboard from 'expo-clipboard';
+import { router, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Share, StyleSheet, ToastAndroid, View } from 'react-native';
 
+import { configAvailability } from '@/config/availability';
 import { useGnssStore } from '@/state/gnssStore';
 import { AppText, Button, Card, DataGate, KeyValueRow } from '@/ui/components';
 import { deviceReportText, deviceSections } from '@/ui/deviceSections';
 import { DASH, formatClock } from '@/ui/format';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
+
+// Typed-route generation lists the index file as /config/index; the URL is /config.
+const CONFIG_ROUTE = '/config' as Href;
 
 export default function DeviceScreen() {
   const { t } = useTranslation();
@@ -43,6 +48,9 @@ function DeviceContent() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
+      {configAvailability(snapshot) === 'ok' ? (
+        <Button label={t('device.configure')} onPress={() => router.push(CONFIG_ROUTE)} />
+      ) : null}
       <Button variant="secondary" label={t('device.share')} onPress={share} />
       {sections.map((section) => (
         <Card key={section.title} title={section.title}>
