@@ -60,8 +60,10 @@ The config plugin `plugins/withReleaseSigning.js` reads these properties. Withou
 5. Verify the signature:
 
    ```powershell
-   & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\apksigner.bat" verify --print-certs dist\ubx-mobile-1.0.0-2.apk
+   & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\apksigner.bat" verify --print-certs dist\ubx-mobile-1.0.0-1.apk
    ```
+
+   Use the file name printed by the build: `ubx-mobile-<version>-<versionCode>.apk`, so the first release (`1.0.0`, versionCode `1`) is `ubx-mobile-1.0.0-1.apk`.
 
    The certificate must be your release certificate (the same SHA-256 digest as the previous release), not "Android Debug".
 
