@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Clipboard from 'expo-clipboard';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, StyleSheet, ToastAndroid, View } from 'react-native';
 
@@ -10,8 +10,11 @@ import { useTrack } from '@/state/trackStore';
 import { AppText, Banner, DataGate } from '@/ui/components';
 import { fixLabelKey } from '@/ui/fixLabel';
 import { formatCoordinate, formatDistance, formatLatLonPlain } from '@/ui/format';
+import { useSatelliteView } from '@/ui/hooks/useSatelliteView';
+import { groundPoints, GroundPointsLayer, SkyOverlay } from '@/ui/map/SatelliteLayers';
 import { TileMap, type MapMarker } from '@/ui/map/TileMap';
-import { clampZoom, MIN_ZOOM, OSM_COPYRIGHT_URL, type LatLon } from '@/ui/map/tiles';
+import { clampZoom, MIN_ZOOM, OSM_COPYRIGHT_URL, toScreen, type LatLon } from '@/ui/map/tiles';
+import { hasSkyPosition } from '@/state/selectors';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 import { minTouchTarget, radius, spacing } from '@/ui/theme/tokens';
 
@@ -67,9 +70,25 @@ function MapContent() {
     zoom: undefined,
   });
   const [tilesAvailable, setTilesAvailable] = useState(true);
+  const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+
+  // Satellite layers (REQ-MAP-11, 12), with the same filter as the Satellites and Sky screens.
+  const skyOverlay = useSettings((s) => s.mapSkyOverlay);
+  const showGround = useSettings((s) => s.mapGroundPoints);
+  const update = useSettings((s) => s.update);
+  const { filtered, labelStyle } = useSatelliteView();
+  const placed = useMemo(() => filtered.filter(hasSkyPosition), [filtered]);
+  const ground = useMemo(
+    () => (showGround && marker ? groundPoints(marker, placed) : []),
+    [showGround, marker?.lat, marker?.lon, placed], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const zoom = view.zoom ?? (marker ? POSITION_ZOOM : MIN_ZOOM);
   const center = follow && marker ? { lat: marker.lat, lon: marker.lon } : view.center;
+  const groundVisible = ground.some(({ point }) => {
+    const s = toScreen(point, center, zoom, mapSize.width, mapSize.height);
+    return s.x >= 0 && s.y >= 0 && s.x <= mapSize.width && s.y <= mapSize.height;
+  });
 
   const onViewChange = useCallback((c: LatLon, z: number) => setView({ center: c, zoom: z }), []);
   const onUserMove = useCallback(() => setFollow(false), []);
@@ -87,7 +106,10 @@ function MapContent() {
   };
 
   return (
-    <View style={styles.fill}>
+    <View
+      testID="map-screen"
+      style={styles.fill}
+      onLayout={(e) => setMapSize(e.nativeEvent.layout)}>
       <TileMap
         center={center}
         zoom={zoom}
@@ -97,6 +119,21 @@ function MapContent() {
         track={track}
         dimTiles={scheme === 'dark'}
         onTilesAvailable={setTilesAvailable}
+        renderOverlay={(project, size) => (
+          <>
+            {ground.length > 0 ? (
+              <GroundPointsLayer points={ground} toScreen={project} labelStyle={labelStyle} />
+            ) : null}
+            {skyOverlay && marker ? (
+              <SkyOverlay
+                center={project(marker)}
+                radius={Math.min(size.width, size.height) * 0.4}
+                satellites={placed}
+                labelStyle={labelStyle}
+              />
+            ) : null}
+          </>
+        )}
       />
 
       <View style={styles.top} pointerEvents="box-none">
@@ -126,9 +163,24 @@ function MapContent() {
           )}
         </Pressable>
         {!tilesAvailable ? <Banner tone="warning" message={t('map.tilesUnavailable')} /> : null}
+        {showGround && ground.length > 0 && !groundVisible ? (
+          <Banner tone="info" message={t('map.groundHint')} />
+        ) : null}
       </View>
 
       <View style={styles.controls} pointerEvents="box-none">
+        <MapButton
+          icon="radar"
+          label={t('map.skyOverlay')}
+          selected={skyOverlay}
+          onPress={() => update({ mapSkyOverlay: !skyOverlay })}
+        />
+        <MapButton
+          icon="earth"
+          label={t('map.groundPoints')}
+          selected={showGround}
+          onPress={() => update({ mapGroundPoints: !showGround })}
+        />
         <MapButton icon="plus" label={t('map.zoomIn')} onPress={() => zoomBy(1)} />
         <MapButton icon="minus" label={t('map.zoomOut')} onPress={() => zoomBy(-1)} />
         <MapButton
@@ -158,7 +210,7 @@ function MapButton({
   selected,
   disabled,
 }: {
-  icon: 'plus' | 'minus' | 'crosshairs-gps' | 'crosshairs';
+  icon: 'plus' | 'minus' | 'crosshairs-gps' | 'crosshairs' | 'radar' | 'earth';
   label: string;
   onPress: () => void;
   selected?: boolean;

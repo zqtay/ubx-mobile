@@ -653,7 +653,10 @@
     "attribution": "© OpenStreetMap contributors",
     "openCopyright": "© OpenStreetMap contributors. Open the copyright page",
     "copied": "Coordinates copied",
-    "copyHint": "Long-press to copy the coordinates"
+    "copyHint": "Long-press to copy the coordinates",
+    "skyOverlay": "Sky overlay: satellites around your position",
+    "groundPoints": "Satellite ground points",
+    "groundHint": "Zoom out to see the satellites' ground points."
   },
   "console": {
     "pause": "Pause",

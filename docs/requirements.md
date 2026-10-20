@@ -260,6 +260,8 @@ Applies to **u-blox receivers on the USB source**. The primary target is the gen
 | REQ-MAP-08 | S | A course arrow is shown on the marker when the speed is above 0.5 m/s and the course is known. | |
 | REQ-MAP-09 | S | An overlay shows latitude/longitude (in the chosen coordinate format), horizontal accuracy and fix type. Long-press copies the coordinates. | |
 | REQ-MAP-10 | C | A custom tile server URL (e.g. a self-hosted or commercial provider) can be set in Settings. | |
+| REQ-MAP-11 | S | **Sky overlay** (toggle): a north-up sky plot centred on the position marker, drawn over the map, shows every satellite at its azimuth and elevation with the same markers as the Sky view, so obstructions (buildings, trees) can be matched to the satellites they block. | Turning the toggle on shows rings for 0°/30°/60° elevation around the marker; a satellite at azimuth 90° appears due east of the marker. |
+| REQ-MAP-12 | C | **Satellite ground points** (toggle): the point on Earth directly below each satellite, computed from the receiver position, the satellite's azimuth and elevation and its constellation's orbit radius, shown on the map (meaningful when zoomed out). | With GPS satellites near the horizon, their ground points lie ~76° of arc (~8,500 km) from the receiver. |
 
 ## 7. Non-functional requirements (REQ-NFR)
 

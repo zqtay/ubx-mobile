@@ -45,8 +45,10 @@ function touchEvent(points: { x: number; y: number }[], timestamp: number) {
 async function renderMap() {
   const router = await renderRouter(APP, { initialUrl: '/map' });
   const map = screen.getByTestId('tile-map');
+  const layout = { nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 600 } } };
   await act(async () => {
-    fireEvent(map, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 600 } } });
+    fireEvent(map, 'layout', layout);
+    fireEvent(screen.getByTestId('map-screen'), 'layout', layout);
   });
   return { router, map: () => screen.getByTestId('tile-map') };
 }
@@ -143,6 +145,29 @@ describe('Map screen (REQ-MAP, functional spec §12)', () => {
     });
     expect(screen.getByText('No fix — showing the last position')).toBeTruthy();
     expect(screen.getByTestId('map-marker-last')).toBeTruthy();
+  });
+
+  it('shows the sky overlay and ground points when toggled (REQ-MAP-11, 12)', async () => {
+    useGnssStore.setState(demoSnapshot(), true);
+    await renderMap();
+    expect(screen.queryByTestId('map-sky-overlay')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: /^Sky overlay/ }));
+    expect(useSettings.getState().mapSkyOverlay).toBe(true);
+    expect(screen.getByTestId('map-sky-overlay')).toBeTruthy();
+    expect(screen.getAllByTestId(/^map-sat-GPS:/).length).toBeGreaterThan(0);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Satellite ground points' }));
+    expect(useSettings.getState().mapGroundPoints).toBe(true);
+    expect(screen.getByTestId('map-ground-points')).toBeTruthy();
+    // At street zoom the ground points are thousands of km away.
+    expect(screen.getByText("Zoom out to see the satellites' ground points.")).toBeTruthy();
+    for (let i = 0; i < 14; i++) {
+      await fireEvent.press(screen.getByRole('button', { name: 'Zoom out' }));
+    }
+    expect(screen.queryByText("Zoom out to see the satellites' ground points.")).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: /^Sky overlay/ }));
+    expect(screen.queryByTestId('map-sky-overlay')).toBeNull();
   });
 
   it('reports unavailable tiles but keeps the position (REQ-MAP-06)', async () => {

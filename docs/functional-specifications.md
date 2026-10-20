@@ -759,6 +759,9 @@ User stages 38400 → 115200 and taps Apply
 | Position overlay | Latitude and longitude in the coordinate format from Settings, horizontal accuracy and fix type (same labels as the Status screen). Long-press copies `lat, lon` and shows a toast. Without a fix: "Waiting for a position fix…". |
 | Attribution | "© OpenStreetMap contributors", always visible at the bottom left. Tap opens https://www.openstreetmap.org/copyright. |
 | Dark theme | The tiles stay as published; they are dimmed slightly (80% opacity on the dark background) so the map is not glaring. |
+| **Sky overlay** toggle (REQ-MAP-11) | Button with a radar icon in the map controls. Draws a north-up sky plot centred on the position marker: rings at 0°, 30° and 60° elevation and N/E/S/W ticks over a lightly shaded disc, radius ~40% of the shorter screen side (screen size, independent of zoom). Satellites use the Sky view's markers (constellation shape, C/N0 colour, outlined when used) and labels in the chosen SV label style. Uses the same satellite filter as the Satellites and Sky screens. Hidden while there is no position. |
+| **Satellite ground points** toggle (REQ-MAP-12) | Button with a globe icon. Marks the point on Earth below each satellite (same markers, smaller, with labels). They are thousands of km away; when none is on screen a hint says "Zoom out to see the satellites' ground points". |
+| Toggles | Both are remembered (Settings) and independent; the selected state is shown by the filled accent button and announced to screen readers. |
 
 ### 12.2 States and errors
 

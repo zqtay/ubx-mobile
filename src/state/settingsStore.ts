@@ -59,6 +59,10 @@ export interface Settings {
   skyDenseGrid: boolean;
   skyLabels: boolean;
   skyTrails: SkyTrails;
+  /** Map: sky plot around the position (REQ-MAP-11). */
+  mapSkyOverlay: boolean;
+  /** Map: points below the satellites (REQ-MAP-12). */
+  mapGroundPoints: boolean;
   usb: UsbSettings;
   /** Last started source, restarted on launch (REQ-SRC-04). */
   lastSource: SourceChoiceSetting | undefined;
@@ -82,6 +86,8 @@ export const defaultSettings: Settings = {
   skyDenseGrid: false,
   skyLabels: true,
   skyTrails: 'off',
+  mapSkyOverlay: false,
+  mapGroundPoints: false,
   usb: {
     defaultBaud: 'auto',
     probeUbx: true,

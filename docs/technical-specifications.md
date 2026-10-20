@@ -887,6 +887,12 @@ A `LegacyConfigAdapter` maps the same section model onto CFG-PRT, CFG-RATE, CFG-
 | `state/trackStore.ts` | Session track (REQ-MAP-07): subscribes to `gnssStore`, appends the position when a new fix arrives and it moved ≥ 1 m from the previous point, max 2000 points (oldest dropped). Cleared when the source kind or `session.startedAtMs` changes (new source, receiver restart). Memory only. |
 | `app/(tabs)/map.tsx` | Screen: follow mode, zoom buttons, position overlay, attribution, tile-error banner (FS §12). |
 
+### 14.1a Satellite layers (REQ-MAP-11, 12)
+
+- **Sky overlay:** `ui/map/SkyOverlay.tsx`, rendered inside `TileMap`'s overlay SVG through a `renderOverlay(toScreen)` prop, centred on the marker's screen position. It reuses `ui/sky/projection.ts` (`project(el, az, R)`, north up, no rotation since the map is never rotated) and `ui/sky/shapes.ts`.
+- **Ground points:** `domain/subSatellite.ts`. Earth central angle ψ = 90° − E − asin(Rₑ·cos E / Rₛ) (Rₑ = 6371 km, Rₛ = orbit radius from the Earth's centre), then the great-circle destination from the receiver along azimuth A over ψ: φ₂ = asin(sin φ cos ψ + cos φ sin ψ cos A), λ₂ = λ + atan2(sin A sin ψ cos φ, cos ψ − sin φ sin φ₂). Orbit radii: GPS 26,560 km, GLONASS 25,510, Galileo 29,600, BeiDou MEO 27,906 (GEO/IGSO 42,164 for PRN 1–10, 13, 16, 31, 38–40, 56, 59–63), QZSS, NavIC and SBAS 42,164.
+- Toggles persist as `mapSkyOverlay` and `mapGroundPoints` in the settings store.
+
 ### 14.2 Rendering
 
 - **Fractional zoom.** The view zoom `z` is a float (pinch). Tiles are loaded at `tz = round(z)` clamped to 0–19 and drawn at `256 · 2^(z − tz)` px. At most about (⌈w/256⌉+2) × (⌈h/256⌉+2) ≈ 20 tiles on a phone.

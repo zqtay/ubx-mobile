@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import {
   Image,
   StyleSheet,
@@ -44,6 +44,11 @@ export interface TileMapProps {
   dimTiles?: boolean;
   /** Whether any visible tile could be loaded (false = offline / server error). */
   onTilesAvailable?: (available: boolean) => void;
+  /** Extra overlay content (satellite layers), drawn under the position marker. */
+  renderOverlay?: (
+    toScreen: (p: LatLon) => Point,
+    size: { width: number; height: number },
+  ) => ReactNode;
 }
 
 const MARKER_RADIUS = 8;
@@ -82,6 +87,7 @@ export function TileMap({
   track,
   dimTiles,
   onTilesAvailable,
+  renderOverlay,
 }: TileMapProps) {
   const { colors } = useAppTheme();
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -258,6 +264,7 @@ export function TileMap({
             height={size.height}
             style={StyleSheet.absoluteFill}
             pointerEvents="none">
+            {renderOverlay?.(screen, size)}
             {trackPoints ? (
               <Polyline
                 testID="map-track"
