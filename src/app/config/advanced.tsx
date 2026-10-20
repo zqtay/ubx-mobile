@@ -12,7 +12,7 @@ import { ConfigLoadState, StagedBar, useConfigAvailability } from '@/ui/config/C
 import { unavailableMessage } from '@/ui/config/labels';
 import { useBottomInset } from '@/ui/hooks/useBottomInset';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
-import { radius, spacing } from '@/ui/theme/tokens';
+import { radius, spacing, switchColors } from '@/ui/theme/tokens';
 
 type Item = { kind: 'group'; id: number; name: string } | { kind: 'key'; key: number };
 
@@ -222,7 +222,7 @@ function KeyRow({
                 accessibilityLabel={name}
                 value={!!value}
                 onValueChange={(on) => stage(on ? 1 : 0)}
-                trackColor={{ true: colors.primary, false: colors.border }}
+                {...switchColors(colors, !!value)}
               />
             </View>
           ) : def?.enumValues ? (

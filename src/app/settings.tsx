@@ -15,7 +15,7 @@ import {
 } from '@/state/settingsStore';
 import { AppText, Card, Chip, Screen, SegmentedControl } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
-import { spacing } from '@/ui/theme/tokens';
+import { spacing, switchColors } from '@/ui/theme/tokens';
 
 const BAUDS: BaudSetting[] = [
   'auto',
@@ -246,7 +246,7 @@ function SwitchRow({
         accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
-        trackColor={{ true: colors.primary, false: colors.border }}
+        {...switchColors(colors, value)}
       />
     </View>
   );

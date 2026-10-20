@@ -33,12 +33,13 @@ export function useConfigLoader() {
 /** Loading spinner or read error with Retry; renders nothing when ready. */
 export function ConfigLoadState() {
   const { t } = useTranslation();
+  const { colors } = useAppTheme();
   const status = useConfigStore((s) => s.status);
   const error = useConfigStore((s) => s.error);
   if (status === 'loading' || status === 'idle') {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
         <AppText muted>{t('config.loading')}</AppText>
       </View>
     );
@@ -162,7 +163,7 @@ export function StagedBar() {
           ))
         : null}
       <View style={styles.actions}>
-        {busy ? <ActivityIndicator /> : null}
+        {busy ? <ActivityIndicator color={colors.primary} /> : null}
         <AppText variant="label" style={styles.count}>
           {busy ? t('config.staged.working') : t('config.staged.count', { count: staged.size })}
         </AppText>

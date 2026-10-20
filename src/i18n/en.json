@@ -187,8 +187,10 @@
     "legendUsed": "Used in fix",
     "legendNotUsed": "Not used",
     "legendCn0": "C/N0 (dB-Hz)",
-    "noPosition": "{{count}} satellites without a known position are not shown.",
-    "plotA11y": "Sky plot with {{count}} satellites",
+    "noPosition_one": "{{count}} satellite without a known position is not shown.",
+    "noPosition_other": "{{count}} satellites without a known position are not shown.",
+    "plotA11y_one": "Sky plot with {{count}} satellite",
+    "plotA11y_other": "Sky plot with {{count}} satellites",
     "headingUp": "Heading up (rotate with compass)",
     "northUp": "North up",
     "compassUnavailable": "Compass not available"
@@ -410,7 +412,8 @@
     "licenses": "Open-source licences",
     "licensesHint": "Components used by UBX Mobile",
     "diagnostics": "Diagnostics log",
-    "diagnosticsHint": "{{count}} entries: errors, disconnects and configuration changes. Share it when reporting a problem.",
+    "diagnosticsHint_one": "{{count}} entry: errors, disconnects and configuration changes. Share it when reporting a problem.",
+    "diagnosticsHint_other": "{{count}} entries: errors, disconnects and configuration changes. Share it when reporting a problem.",
     "shareDiagnostics": "Share log",
     "clearDiagnostics": "Clear",
     "diagnosticsTitle": "UBX Mobile diagnostics log"
@@ -539,7 +542,8 @@
     "revert": {
       "label": "Revert to saved",
       "hint": "Undo changes that are not saved",
-      "confirmTitle": "Undo {{count}} unsaved changes?",
+      "confirmTitle_one": "Undo {{count}} unsaved change?",
+      "confirmTitle_other": "Undo {{count}} unsaved changes?",
       "confirm": "Revert"
     },
     "factory": {
@@ -555,8 +559,10 @@
       "discard": "Discard",
       "apply": "Apply",
       "working": "Working…",
-      "confirmTitle": "Apply {{count}} changes?",
-      "leaveTitle": "Discard {{count}} unapplied changes?"
+      "confirmTitle_one": "Apply {{count}} change?",
+      "confirmTitle_other": "Apply {{count}} changes?",
+      "leaveTitle_one": "Discard {{count}} unapplied change?",
+      "leaveTitle_other": "Discard {{count}} unapplied changes?"
     },
     "change": "{{name}}: {{from}} → {{to}}",
     "outcome": {
@@ -664,7 +670,8 @@
     "clear": "Clear",
     "filter": "Filter",
     "wrap": "Wrap long lines",
-    "paused": "Paused — {{count}} new messages",
+    "paused_one": "Paused — {{count}} new message",
+    "paused_other": "Paused — {{count}} new messages",
     "empty": "No messages yet. What the receiver sends appears here.",
     "noMatch": "No messages match the filter.",
     "newMessages": "↓ New messages",

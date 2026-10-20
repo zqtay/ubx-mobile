@@ -109,7 +109,7 @@ export default function RestoreScreen() {
 
       {!current ? (
         <View style={styles.loading}>
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primary} />
           <AppText muted>{t('config.restore.reading')}</AppText>
         </View>
       ) : (

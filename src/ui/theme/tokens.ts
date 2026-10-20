@@ -122,6 +122,19 @@ export const palettes: Record<ColorSchemeName, Palette> = {
 };
 
 /**
+ * Switch colours from the palette, so the thumb does not take the system accent (technical spec
+ * §8.3). Android's thumb is larger than its track, so it must stand out from the card itself.
+ */
+export function switchColors(palette: Palette, value: boolean, disabled?: boolean) {
+  return {
+    // #RRGGBB + 50 % alpha.
+    trackColor: { true: `${palette.primary}80`, false: palette.border },
+    thumbColor: value ? palette.primary : palette.textMuted,
+    style: disabled ? { opacity: 0.5 } : undefined,
+  };
+}
+
+/**
  * C/N0 colour scale stops in dB-Hz (functional spec §6.1). Shared by the
  * satellite list, sky markers, gauge and chart. Identical in both themes.
  */

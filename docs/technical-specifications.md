@@ -704,6 +704,8 @@ Derived data (filtered and sorted satellite list, per-constellation counts, aver
 
 `ui/theme/tokens.ts` defines semantic tokens (`bg`, `surface`, `text`, `textMuted`, `grid`, `fix.*`, `gnss.*`, `cn0.stops`) for light and dark themes. Components use only tokens. Contrast ratios are checked by a unit test for text tokens (WCAG AA 4.5:1).
 
+Switches take their colours from `switchColors(palette, value, disabled)`: on, a `primary` thumb on a half-transparent `primary` track; off, a `textMuted` thumb on a `border` track (Android's thumb is larger than the track, so the thumb must contrast with the card, not the track); disabled switches at 50 % opacity. Without an explicit `thumbColor` Android draws the thumb in the system accent colour (e.g. teal on Samsung), which does not match the theme. For the same reason every `ActivityIndicator` sets `color={colors.primary}`.
+
 ### 8.4 Lifecycle
 
 - `SourceManager` subscribes to `AppState`. On `background`, it stops the active source and keeps the snapshot as stale. On `active`, it restarts the source (USB only if the device is still attached and permission is held).

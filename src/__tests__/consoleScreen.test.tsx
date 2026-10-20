@@ -147,7 +147,7 @@ describe('Console screen (REQ-LOG-01, functional spec §8)', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
     await receive(nmea('GNGGA,2'));
-    expect(screen.getByText('Paused — 1 new messages')).toBeTruthy();
+    expect(screen.getByText('Paused — 1 new message')).toBeTruthy();
     expect(screen.queryByText(/^\$GNGGA,2/)).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Resume' }));
     expect(screen.getByText(/^\$GNGGA,2/)).toBeTruthy();

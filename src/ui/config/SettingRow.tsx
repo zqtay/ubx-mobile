@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import type { SettingDef } from '@/config/sections';
 import { AppText, Chip } from '@/ui/components';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
-import { minTouchTarget, radius, spacing } from '@/ui/theme/tokens';
+import { minTouchTarget, radius, spacing, switchColors } from '@/ui/theme/tokens';
 
 import { settingLabel, settingValue, tr } from './labels';
 
@@ -64,7 +64,7 @@ export function SettingRow({
             value={!!value}
             disabled={disabled || locked}
             onValueChange={(on) => onChange(on ? 1 : 0)}
-            trackColor={{ true: colors.primary, false: colors.border }}
+            {...switchColors(colors, !!value, disabled || locked)}
           />
         ) : null}
       </View>

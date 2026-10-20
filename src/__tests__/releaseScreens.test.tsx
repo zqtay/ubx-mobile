@@ -40,7 +40,7 @@ describe('diagnostics log (REQ-LOG-03)', () => {
       .spyOn(Share, 'share')
       .mockResolvedValue({ action: 'sharedAction', activityType: undefined });
     await renderRouter('./src/app', { initialUrl: '/about' });
-    expect(screen.getByText(/^1 entries/)).toBeTruthy();
+    expect(screen.getByText(/^1 entry:/)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Share log' }));
     expect(share.mock.calls[0][0].message).toMatch(
       // Jest has no app version (expoConfig), so only the shape of the header is checked.

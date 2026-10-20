@@ -1,5 +1,5 @@
 import { contrastRatio } from '../contrast';
-import { palettes, type ColorSchemeName } from '../tokens';
+import { palettes, switchColors, type ColorSchemeName } from '../tokens';
 
 const AA = 4.5;
 const schemes: ColorSchemeName[] = ['light', 'dark'];
@@ -45,4 +45,23 @@ describe.each(schemes)('%s palette meets WCAG AA (REQ-NFR-07)', (scheme) => {
   ])('%s', (_name, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA);
   });
+});
+
+describe('switchColors (technical spec §8.3)', () => {
+  it.each<ColorSchemeName>(['light', 'dark'])(
+    'uses theme colours for the thumb, visible on the card (%s)',
+    (scheme) => {
+      const c = palettes[scheme];
+      const on = switchColors(c, true);
+      const off = switchColors(c, false);
+      expect(on.thumbColor).toBe(c.primary);
+      expect(on.trackColor.true).toBe(`${c.primary}80`);
+      expect(off.thumbColor).toBe(c.textMuted);
+      // Non-text contrast (WCAG 1.4.11): the thumb overhangs the track, so 3:1 against the card.
+      expect(contrastRatio(on.thumbColor, c.surface)).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(off.thumbColor, c.surface)).toBeGreaterThanOrEqual(3);
+      expect(switchColors(c, true, true).style).toEqual({ opacity: 0.5 });
+      expect(on.style).toBeUndefined();
+    },
+  );
 });

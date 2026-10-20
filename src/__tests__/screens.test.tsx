@@ -157,7 +157,7 @@ describe('Sky screen (REQ-SKY)', () => {
     expect(screen.getByTestId('cn0-gauge').props.accessibilityLabel).toMatch(
       /Avg C\/N0: In view \d+\.\d, Used \d+\.\d dB-Hz/,
     );
-    expect(screen.getByText('1 satellites without a known position are not shown.')).toBeTruthy();
+    expect(screen.getByText('1 satellite without a known position is not shown.')).toBeTruthy();
     expect(screen.getByText('Legend')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Legend' }));
     expect(screen.queryByText('Used in fix')).toBeNull();
