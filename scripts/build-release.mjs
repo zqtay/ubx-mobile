@@ -20,17 +20,29 @@ function run(cmd, args, cwd = root) {
   execFileSync(cmd, args, { cwd, stdio: 'inherit', shell: windows });
 }
 
-function signingConfigured() {
-  if (process.env.ORG_GRADLE_PROJECT_UBX_RELEASE_STORE_FILE) return true;
+/** Returns why release signing is not usable, or undefined when it is. Never prints the values. */
+function signingProblem() {
+  if (process.env.ORG_GRADLE_PROJECT_UBX_RELEASE_STORE_FILE) return undefined;
   const props = join(process.env.GRADLE_USER_HOME ?? join(homedir(), '.gradle'), 'gradle.properties');
-  return existsSync(props) && /^\s*UBX_RELEASE_STORE_FILE\s*=/m.test(readFileSync(props, 'utf8'));
+  const text = existsSync(props) ? readFileSync(props, 'utf8') : '';
+  if (!/^\s*UBX_RELEASE_STORE_FILE\s*=/m.test(text)) {
+    return (
+      'Release signing is not configured: add UBX_RELEASE_STORE_FILE, UBX_RELEASE_STORE_PASSWORD,\n' +
+      'UBX_RELEASE_KEY_ALIAS and UBX_RELEASE_KEY_PASSWORD to ~/.gradle/gradle.properties (docs/release.md).'
+    );
+  }
+  // Java properties treat "\" as an escape: "C:\Users\...\ubx-mobile.p12" stops the Gradle
+  // wrapper with "Malformed \uxxxx encoding" before the build starts.
+  const storeFile = /^\s*UBX_RELEASE_STORE_FILE\s*=(.*)$/m.exec(text)[1];
+  if (storeFile.includes('\\')) {
+    return `UBX_RELEASE_STORE_FILE in ${props} uses backslashes.\nWrite the path with forward slashes, e.g. C:/keys/ubx-mobile-release.p12 (docs/release.md).`;
+  }
+  return undefined;
 }
 
-if (!signingConfigured()) {
-  console.error(
-    'Release signing is not configured: add UBX_RELEASE_STORE_FILE, UBX_RELEASE_STORE_PASSWORD,\n' +
-      'UBX_RELEASE_KEY_ALIAS and UBX_RELEASE_KEY_PASSWORD to ~/.gradle/gradle.properties (docs/release.md).',
-  );
+const problem = signingProblem();
+if (problem) {
+  console.error(problem);
   process.exit(1);
 }
 

@@ -31,6 +31,8 @@ Every update must be signed with the **same key** as the version already install
    UBX_RELEASE_KEY_PASSWORD=<password>
    ```
 
+   Write the path with **forward slashes** (`C:/keys/...`). This file is a Java properties file, where `\` starts an escape: a path such as `C:\Users\...\ubx-mobile-release.p12` stops the build with "Malformed \uxxxx encoding". `npm run release:apk` checks for this. A password containing `\` must be written as `\\`.
+
    `UBX_RELEASE_STORE_PASSWORD` opens the keystore file and `UBX_RELEASE_KEY_PASSWORD` unlocks the key inside it. A PKCS12 keystore (as created in step 1) has a single password, so both are the password you chose in step 1. They differ only for an older JKS keystore created with a separate `-keypass`.
 
    On a build server, use the environment variables `ORG_GRADLE_PROJECT_UBX_RELEASE_STORE_FILE` and so on instead.
