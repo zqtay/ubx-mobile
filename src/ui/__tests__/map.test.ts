@@ -1,5 +1,8 @@
 import {
+  applyTransform,
   clampZoom,
+  composeTransform,
+  IDENTITY,
   MAX_ZOOM,
   metersPerPixel,
   panBy,
@@ -79,5 +82,29 @@ describe('Web Mercator tile maths (technical spec §14)', () => {
 
   it('identifies the app to the tile server (OSM tile usage policy)', () => {
     expect(TILE_HEADERS['User-Agent']).toMatch(/^UBXMobile\/\S+ \(Android/);
+  });
+});
+
+describe('gesture transforms (technical spec §14.3)', () => {
+  it('turns a drag into the same view as panBy', () => {
+    const t = composeTransform(IDENTITY, 1, { x: 0, y: 0 }, { x: 120, y: -40 });
+    const view = applyTransform(LONDON, 15, t);
+    const expected = panBy(LONDON, 15, 120, -40);
+    expect(view.zoom).toBe(15);
+    expect(view.center.lat).toBeCloseTo(expected.lat, 9);
+    expect(view.center.lon).toBeCloseTo(expected.lon, 9);
+  });
+
+  it('keeps the pinch focus fixed and composes segments', () => {
+    const focus = { x: 60, y: -30 };
+    const t = composeTransform(IDENTITY, 2, focus, { x: 0, y: 0 });
+    const view = applyTransform(LONDON, 14, t);
+    const expected = zoomAround(LONDON, 14, 15, focus);
+    expect(view.zoom).toBeCloseTo(15, 9);
+    expect(view.center.lat).toBeCloseTo(expected.lat, 9);
+    expect(view.center.lon).toBeCloseTo(expected.lon, 9);
+    // A second segment (e.g. after a finger was lifted) continues from the first.
+    const both = composeTransform(t, 1, { x: 0, y: 0 }, { x: 10, y: 10 });
+    expect(both).toEqual({ scale: 2, translate: { x: t.translate.x + 10, y: t.translate.y + 10 } });
   });
 });

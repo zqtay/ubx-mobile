@@ -898,15 +898,16 @@ A `LegacyConfigAdapter` maps the same section model onto CFG-PRT, CFG-RATE, CFG-
 - **Fractional zoom.** The view zoom `z` is a float (pinch). Tiles are loaded at `tz = round(z)` clamped to 0–19 and drawn at `256 · 2^(z − tz)` px. At most about (⌈w/256⌉+2) × (⌈h/256⌉+2) ≈ 20 tiles on a phone.
 - **Placement.** The world pixel of the centre at `tz`, scaled, minus half the view size, gives the view origin. Tile `(x, y)` is drawn at `x·size − originX`. `x` is wrapped modulo `2^tz` for the URL (the map repeats horizontally); `y` outside `0…2^tz−1` is not drawn.
 - **Overlay** (react-native-svg, same coordinate system): track polyline, accuracy circle (`r = hAcc / metersPerPixel(lat, z)`), marker, course arrow.
-- **Updates.** Pan/pinch update `{center, zoom}` through React state per move event. With ~20 `Image`s and one `Svg` this stays well within the frame budget. If profiling shows otherwise, move the tile layer into a Reanimated transform during the gesture and commit on release.
+- **Updates.** During a pan or pinch nothing re-renders: the tiles and overlays sit in one `Animated.View`, and the gesture only sets its transform (`translate`, `scale`; JS-driven `Animated.Value`s, no React render). The view is committed once when the gesture ends (`applyTransform`), and the transform is reset in the layout effect of that render. Tiles and the SVG overlays are drawn with a one-tile margin beyond the screen, so a drag shows no blank edges. (The first version re-rendered the whole map, ~20 images and the SVG layers, on every touch move, which was visibly laggy on the phone.)
 
 ### 14.3 Gestures (View responder props)
 
 The handlers are plain `onResponderGrant/Move/Release` props, not `PanResponder.create` in a `useMemo`: the React Compiler lint rejects refs and impure calls inside a memoised factory, and the gesture state of `PanResponder` is not needed.
 
 
-- One finger: pan. `center = panBy(center₀, zoom, dx, dy)`, relative to the state at gesture start.
-- Two fingers: pinch. `zoom = zoom₀ + log₂(d / d₀)` around the midpoint (`zoomAround`), plus the midpoint's movement as pan. When the number of fingers changes, the gesture re-anchors (new `center₀`, `zoom₀`, `d₀`).
+- The gesture keeps an affine screen transform `p' = scale·p + translate` (offsets from the view centre). One finger: pan by the finger's movement.
+- Two fingers: pinch by `d / d₀` around the midpoint plus the midpoint's movement (`composeTransform`), limited so the result stays within zoom 2–19. When the number of fingers changes, a new segment continues from the current transform.
+- Release: `applyTransform` gives the view (centre, zoom) that shows the same thing; `onViewChange` is called once. `onUserMove(center, zoom)` at the first movement turns follow mode off and keeps the starting view.
 - Double tap (two releases < 300 ms apart by event timestamp, < 20 px apart): `zoomAround(+1)` at the tap.
 - Any pan or pinch calls `onUserMove`, which turns follow mode off.
 

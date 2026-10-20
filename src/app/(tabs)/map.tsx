@@ -91,7 +91,11 @@ function MapContent() {
   });
 
   const onViewChange = useCallback((c: LatLon, z: number) => setView({ center: c, zoom: z }), []);
-  const onUserMove = useCallback(() => setFollow(false), []);
+  // Leaving follow mode keeps the view the gesture started from (the marker's position).
+  const onUserMove = useCallback((c: LatLon, z: number) => {
+    setFollow(false);
+    setView({ center: c, zoom: z });
+  }, []);
   const zoomBy = (delta: number) => setView({ center, zoom: clampZoom(Math.round(zoom) + delta) });
   const centreOnPosition = () => {
     setFollow(true);

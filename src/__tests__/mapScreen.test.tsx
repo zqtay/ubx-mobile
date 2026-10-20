@@ -1,5 +1,5 @@
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
-import { Linking } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
 
 import { emptySnapshot, useGnssStore } from '@/state/gnssStore';
 import { useSettings } from '@/state/settingsStore';
@@ -100,6 +100,30 @@ describe('Map screen (REQ-MAP, functional spec §12)', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Centre on position' }));
     expect(screen.getByRole('button', { name: 'Following position' })).toBeTruthy();
+  });
+
+  it('moves the drawn map during a drag and re-renders only when it ends (performance)', async () => {
+    useGnssStore.setState(demoSnapshot(), true);
+    const { map } = await renderMap();
+    const before = tileUrls().map((t) => t.uri);
+    await act(async () => {
+      map().props.onResponderGrant(touchEvent([{ x: 200, y: 300 }], 1));
+      map().props.onResponderMove(touchEvent([{ x: 500, y: 300 }], 2));
+    });
+    // Mid-gesture: same tiles, shifted by the transform.
+    expect(tileUrls().map((t) => t.uri)).toEqual(before);
+    const transform = StyleSheet.flatten(
+      screen.getByTestId('tile-map-content').props.style,
+    ).transform;
+    expect(transform).toEqual([{ translateX: 300 }, { translateY: 0 }, { scale: 1 }]);
+    await act(async () => {
+      map().props.onResponderRelease(touchEvent([], 3));
+    });
+    // Released: the view moved by 300 px (new tiles) and the transform is back to identity.
+    expect(tileUrls().map((t) => t.uri)).not.toEqual(before);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('tile-map-content').props.style).transform,
+    ).toEqual([{ translateX: 0 }, { translateY: 0 }, { scale: 1 }]);
   });
 
   it('zooms by pinching', async () => {

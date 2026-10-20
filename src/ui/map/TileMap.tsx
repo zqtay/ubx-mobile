@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from 'react';
+import {
+  Animated,
   Image,
   StyleSheet,
   View,
@@ -13,15 +22,21 @@ import type { TrackPoint } from '@/state/trackStore';
 import { useAppTheme } from '@/ui/theme/ThemeProvider';
 
 import {
+  applyTransform,
   clampZoom,
+  composeTransform,
+  IDENTITY,
+  MAX_ZOOM,
   metersPerPixel,
-  panBy,
+  MIN_ZOOM,
   TILE_HEADERS,
+  TILE_SIZE,
   toScreen,
   visibleTiles,
   zoomAround,
   type LatLon,
   type Point,
+  type ViewTransform,
 } from './tiles';
 
 export interface MapMarker extends LatLon {
@@ -35,9 +50,13 @@ export interface MapMarker extends LatLon {
 export interface TileMapProps {
   center: LatLon;
   zoom: number;
+  /** A gesture or double tap ended on this view. */
   onViewChange: (center: LatLon, zoom: number) => void;
-  /** Called once per pan, pinch or double tap (turns follow mode off). */
-  onUserMove: () => void;
+  /**
+   * Called once when a pan, pinch or double tap starts (turns follow mode off), with the view
+   * shown at that moment.
+   */
+  onUserMove: (center: LatLon, zoom: number) => void;
   marker?: MapMarker;
   track?: readonly TrackPoint[];
   /** Dim the tiles (dark theme). */
@@ -54,14 +73,20 @@ export interface TileMapProps {
 const MARKER_RADIUS = 8;
 const DOUBLE_TAP_MS = 300;
 const TAP_SLOP = 10;
+/** Tiles and overlays are drawn this far beyond the screen, so panning shows no blank edges. */
+const MARGIN = TILE_SIZE;
 
-interface Anchor {
+interface Gesture {
   center: LatLon;
   zoom: number;
+  /** Fingers in the current segment (a change starts a new segment). */
   touches: number;
-  /** First touch (pan) or midpoint (pinch), page coordinates. */
+  /** First touch (pan) or midpoint (pinch) at the start of the segment, page coordinates. */
   point: Point;
   distance: number;
+  /** Transform at the start of the segment, and now. */
+  base: ViewTransform;
+  current: ViewTransform;
   moved: boolean;
 }
 
@@ -77,6 +102,10 @@ const spread = (t: readonly NativeTouchEvent[]) =>
 /**
  * OpenStreetMap raster map with position, accuracy and track overlay (technical spec §14).
  * Controlled: the parent owns `center` and `zoom`.
+ *
+ * Performance (technical spec §14.3): during a pan or pinch nothing re-renders; the gesture only
+ * moves an animated transform of the already drawn tiles and overlays. The parent receives the
+ * resulting view once, when the gesture ends.
  */
 export function TileMap({
   center,
@@ -95,9 +124,20 @@ export function TileMap({
   const [loaded, setLoaded] = useState<ReadonlySet<string>>(() => new Set());
   // After a failure, the next user move remounts the tiles so they are requested again.
   const [generation, setGeneration] = useState(0);
+  const [anim] = useState(() => ({
+    x: new Animated.Value(0),
+    y: new Animated.Value(0),
+    scale: new Animated.Value(1),
+  }));
 
+  // Tiles for the screen plus a margin, positioned relative to the screen.
   const tiles = useMemo(
-    () => (size.width > 0 ? visibleTiles(center, zoom, size.width, size.height) : []),
+    () =>
+      size.width > 0
+        ? visibleTiles(center, zoom, size.width + 2 * MARGIN, size.height + 2 * MARGIN).map(
+            (t) => ({ ...t, left: t.left - MARGIN, top: t.top - MARGIN }),
+          )
+        : [],
     [center, zoom, size.width, size.height],
   );
   const available = !(
@@ -109,62 +149,88 @@ export function TileMap({
 
   const origin = useRef<Point>({ x: 0, y: 0 });
   const viewRef = useRef<ComponentRef<typeof View>>(null);
-  const anchor = useRef<Anchor | null>(null);
+  const gesture = useRef<Gesture | null>(null);
   const lastTap = useRef<{ atMs: number; point: Point } | null>(null);
+  const resetPending = useRef(false);
 
-  // Gestures use the View's responder props directly (technical spec §14.3). Handlers read the
-  // current props; the anchor records the view at the start of the gesture.
-  const setAnchor = (e: GestureResponderEvent, moved: boolean) => {
-    const t = touchList(e);
-    anchor.current = {
-      center,
-      zoom,
-      touches: t.length,
-      point: midpoint(t),
-      distance: spread(t),
-      moved,
-    };
+  // The parent re-rendered with the view a gesture ended on: drop the temporary transform.
+  useLayoutEffect(() => {
+    if (!resetPending.current) return;
+    resetPending.current = false;
+    anim.x.setValue(0);
+    anim.y.setValue(0);
+    anim.scale.setValue(1);
+  });
+
+  const show = (t: ViewTransform) => {
+    anim.x.setValue(t.translate.x);
+    anim.y.setValue(t.translate.y);
+    anim.scale.setValue(t.scale);
   };
+
   /** Offset of a page point from the view centre. */
   const fromCentre = (p: Point): Point => ({
     x: p.x - origin.current.x - size.width / 2,
     y: p.y - origin.current.y - size.height / 2,
   });
-  const userMoved = (a: Anchor) => {
-    if (a.moved) return;
-    a.moved = true;
-    onUserMove();
+
+  // Gestures use the View's responder props directly (technical spec §14.3).
+  const startSegment = (e: GestureResponderEvent, prev: Gesture | null) => {
+    const t = touchList(e);
+    gesture.current = {
+      center: prev?.center ?? center,
+      zoom: prev?.zoom ?? zoom,
+      touches: t.length,
+      point: midpoint(t),
+      distance: spread(t),
+      base: prev?.current ?? IDENTITY,
+      current: prev?.current ?? IDENTITY,
+      moved: prev?.moved ?? false,
+    };
+  };
+  const userMoved = (g: Gesture) => {
+    if (g.moved) return;
+    g.moved = true;
+    onUserMove(g.center, g.zoom);
     if (failed.size > 0) {
       setFailed(new Set());
-      setGeneration((g) => g + 1);
+      setGeneration((n) => n + 1);
     }
   };
   const onMove = (e: GestureResponderEvent) => {
-    const a = anchor.current;
+    const g = gesture.current;
     const t = touchList(e);
-    if (!a || t.length === 0) return;
-    if (t.length !== a.touches) {
-      setAnchor(e, a.moved);
+    if (!g || t.length === 0) return;
+    if (t.length !== g.touches) {
+      startSegment(e, g); // a finger was added or lifted: continue from the current transform
       return;
     }
     const p = midpoint(t);
-    const dx = p.x - a.point.x;
-    const dy = p.y - a.point.y;
-    if (t.length >= 2 && a.distance > 0) {
-      const z = clampZoom(a.zoom + Math.log2(spread(t) / a.distance));
-      const zoomed = zoomAround(a.center, a.zoom, z, fromCentre(a.point));
-      userMoved(a);
-      onViewChange(panBy(zoomed, z, dx, dy), z);
+    const pan = { x: p.x - g.point.x, y: p.y - g.point.y };
+    let k = 1;
+    if (t.length >= 2 && g.distance > 0) {
+      // Keep the resulting zoom within the tile range.
+      const total = g.base.scale * (spread(t) / g.distance);
+      const limited = Math.min(2 ** (MAX_ZOOM - g.zoom), Math.max(2 ** (MIN_ZOOM - g.zoom), total));
+      k = limited / g.base.scale;
+    } else if (!g.moved && Math.hypot(pan.x, pan.y) < TAP_SLOP) {
       return;
     }
-    if (!a.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
-    userMoved(a);
-    onViewChange(panBy(a.center, a.zoom, dx, dy), a.zoom);
+    userMoved(g);
+    g.current = composeTransform(g.base, k, fromCentre(g.point), pan);
+    show(g.current);
   };
   const onRelease = (e: GestureResponderEvent) => {
-    const a = anchor.current;
-    anchor.current = null;
-    if (!a || a.moved) return;
+    const g = gesture.current;
+    gesture.current = null;
+    if (!g) return;
+    if (g.moved) {
+      // Commit once; the transform is dropped when the parent re-renders with this view.
+      resetPending.current = true;
+      const view = applyTransform(g.center, g.zoom, g.current);
+      onViewChange(view.center, view.zoom);
+      return;
+    }
     const p = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
     const atMs = e.nativeEvent.timestamp;
     const prev = lastTap.current;
@@ -174,7 +240,7 @@ export function TileMap({
       Math.hypot(p.x - prev.point.x, p.y - prev.point.y) < TAP_SLOP * 2
     ) {
       lastTap.current = null;
-      userMoved(a);
+      userMoved(g);
       const nz = clampZoom(Math.round(zoom) + 1);
       onViewChange(zoomAround(center, zoom, nz, fromCentre(p)), nz);
       return;
@@ -199,8 +265,10 @@ export function TileMap({
   const accuracyR =
     marker?.hAccM !== undefined ? marker.hAccM / metersPerPixel(marker.lat, zoom) : 0;
   const markerColor = marker?.state === 'stale' ? colors.textMuted : colors.primary;
-  const gridStep = tiles[0]?.size ?? 256;
+  const gridStep = tiles[0]?.size ?? TILE_SIZE;
   const gridOffset = tiles[0] ? { x: tiles[0].left, y: tiles[0].top } : { x: 0, y: 0 };
+  const outer = { width: size.width + 2 * MARGIN, height: size.height + 2 * MARGIN };
+  const shifted = `translate(${MARGIN} ${MARGIN})`;
 
   return (
     <View
@@ -211,33 +279,47 @@ export function TileMap({
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
       onResponderTerminationRequest={() => false}
-      onResponderGrant={(e) => setAnchor(e, false)}
+      onResponderGrant={(e) => startSegment(e, null)}
       onResponderMove={onMove}
-      onResponderRelease={onRelease}>
+      onResponderRelease={onRelease}
+      onResponderTerminate={onRelease}>
       {size.width > 0 ? (
-        <>
-          <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
+        <Animated.View
+          testID="tile-map-content"
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [{ translateX: anim.x }, { translateY: anim.y }, { scale: anim.scale }],
+            },
+          ]}>
+          <Svg
+            width={outer.width}
+            height={outer.height}
+            style={[styles.outer, { left: -MARGIN, top: -MARGIN }]}>
             {/* Plain grid under the tiles: visible while loading or offline. */}
-            {Array.from({ length: Math.ceil(size.width / gridStep) + 1 }, (_, i) => (
-              <Line
-                key={`v${i}`}
-                x1={gridOffset.x + i * gridStep}
-                x2={gridOffset.x + i * gridStep}
-                y1={0}
-                y2={size.height}
-                stroke={colors.border}
-              />
-            ))}
-            {Array.from({ length: Math.ceil(size.height / gridStep) + 1 }, (_, i) => (
-              <Line
-                key={`h${i}`}
-                y1={gridOffset.y + i * gridStep}
-                y2={gridOffset.y + i * gridStep}
-                x1={0}
-                x2={size.width}
-                stroke={colors.border}
-              />
-            ))}
+            <G transform={shifted}>
+              {Array.from({ length: Math.ceil(outer.width / gridStep) + 1 }, (_, i) => (
+                <Line
+                  key={`v${i}`}
+                  x1={gridOffset.x + i * gridStep}
+                  x2={gridOffset.x + i * gridStep}
+                  y1={-MARGIN}
+                  y2={size.height + MARGIN}
+                  stroke={colors.border}
+                />
+              ))}
+              {Array.from({ length: Math.ceil(outer.height / gridStep) + 1 }, (_, i) => (
+                <Line
+                  key={`h${i}`}
+                  y1={gridOffset.y + i * gridStep}
+                  y2={gridOffset.y + i * gridStep}
+                  x1={-MARGIN}
+                  x2={size.width + MARGIN}
+                  stroke={colors.border}
+                />
+              ))}
+            </G>
           </Svg>
           {tiles.map((t) => (
             <Image
@@ -260,52 +342,53 @@ export function TileMap({
             />
           ))}
           <Svg
-            width={size.width}
-            height={size.height}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none">
-            {renderOverlay?.(screen, size)}
-            {trackPoints ? (
-              <Polyline
-                testID="map-track"
-                points={trackPoints}
-                fill="none"
-                stroke={colors.primary}
-                strokeOpacity={0.7}
-                strokeWidth={3}
-                strokeLinejoin="round"
-              />
-            ) : null}
-            {m && accuracyR > MARKER_RADIUS ? (
-              <Circle
-                testID="map-accuracy"
-                cx={m.x}
-                cy={m.y}
-                r={accuracyR}
-                fill={markerColor}
-                fillOpacity={0.15}
-                stroke={markerColor}
-                strokeOpacity={0.5}
-              />
-            ) : null}
-            {m && marker?.courseDeg !== undefined ? (
-              <G transform={`translate(${m.x} ${m.y}) rotate(${marker.courseDeg})`}>
-                <Path testID="map-course" d="M0,-22 L7,-11 L-7,-11 Z" fill={markerColor} />
-              </G>
-            ) : null}
-            {m ? (
-              <Circle
-                testID={`map-marker-${marker!.state}`}
-                cx={m.x}
-                cy={m.y}
-                r={MARKER_RADIUS}
-                fill={marker!.state === 'fix' ? markerColor : colors.surface}
-                stroke={marker!.state === 'fix' ? '#FFFFFF' : markerColor}
-                strokeWidth={3}
-              />
-            ) : null}
+            width={outer.width}
+            height={outer.height}
+            style={[styles.outer, { left: -MARGIN, top: -MARGIN }]}>
+            <G transform={shifted}>
+              {renderOverlay?.(screen, size)}
+              {trackPoints ? (
+                <Polyline
+                  testID="map-track"
+                  points={trackPoints}
+                  fill="none"
+                  stroke={colors.primary}
+                  strokeOpacity={0.7}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                />
+              ) : null}
+              {m && accuracyR > MARKER_RADIUS ? (
+                <Circle
+                  testID="map-accuracy"
+                  cx={m.x}
+                  cy={m.y}
+                  r={accuracyR}
+                  fill={markerColor}
+                  fillOpacity={0.15}
+                  stroke={markerColor}
+                  strokeOpacity={0.5}
+                />
+              ) : null}
+              {m && marker?.courseDeg !== undefined ? (
+                <G transform={`translate(${m.x} ${m.y}) rotate(${marker.courseDeg})`}>
+                  <Path testID="map-course" d="M0,-22 L7,-11 L-7,-11 Z" fill={markerColor} />
+                </G>
+              ) : null}
+              {m ? (
+                <Circle
+                  testID={`map-marker-${marker!.state}`}
+                  cx={m.x}
+                  cy={m.y}
+                  r={MARKER_RADIUS}
+                  fill={marker!.state === 'fix' ? markerColor : colors.surface}
+                  stroke={marker!.state === 'fix' ? '#FFFFFF' : markerColor}
+                  strokeWidth={3}
+                />
+              ) : null}
+            </G>
           </Svg>
-        </>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -315,6 +398,9 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     overflow: 'hidden',
+  },
+  outer: {
+    position: 'absolute',
   },
   tile: {
     position: 'absolute',

@@ -152,3 +152,45 @@ export function visibleTiles(
   }
   return tiles;
 }
+
+/**
+ * Screen transform of a map gesture, relative to the view centre: a map point at offset `p`
+ * from the centre is drawn at `scale·p + translate` (technical spec §14.3).
+ */
+export interface ViewTransform {
+  scale: number;
+  translate: Point;
+}
+
+export const IDENTITY: ViewTransform = { scale: 1, translate: { x: 0, y: 0 } };
+
+/** Combines a transform with a further pinch by `k` around `focus` and a pan by `pan`. */
+export function composeTransform(
+  t: ViewTransform,
+  k: number,
+  focus: Point,
+  pan: Point,
+): ViewTransform {
+  return {
+    scale: t.scale * k,
+    translate: {
+      x: k * t.translate.x + focus.x * (1 - k) + pan.x,
+      y: k * t.translate.y + focus.y * (1 - k) + pan.y,
+    },
+  };
+}
+
+/** The view (centre, zoom) that shows what the transformed map shows. */
+export function applyTransform(
+  center: LatLon,
+  zoom: number,
+  t: ViewTransform,
+): { center: LatLon; zoom: number } {
+  const c = project(center, zoom);
+  // The map point now drawn at the view centre: scale·p + translate = 0.
+  const p = { x: -t.translate.x / t.scale, y: -t.translate.y / t.scale };
+  return {
+    center: unproject({ x: c.x + p.x, y: c.y + p.y }, zoom),
+    zoom: clampZoom(zoom + Math.log2(t.scale)),
+  };
+}
