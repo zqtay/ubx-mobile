@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <title>UBX Mobile</title>
+  <g fill="none">
+    <circle cx="50" cy="50" r="16.5" stroke="#8A919D" stroke-width="1.8"/>
+    <circle cx="50" cy="50" r="33" stroke="#111418" stroke-width="3.2"/>
+  </g>
+  <g stroke="#111418" stroke-width="2.2" stroke-linecap="round">
+    <line x1="50.000" y1="18.600" x2="50.000" y2="23.100"/>
+    <line x1="81.400" y1="50.000" x2="76.900" y2="50.000"/>
+    <line x1="50.000" y1="81.400" x2="50.000" y2="76.900"/>
+    <line x1="18.600" y1="50.000" x2="23.100" y2="50.000"/>
+  </g>
+  <circle cx="50" cy="50" r="2.4" fill="#111418"/>
+  <circle cx="65.804" cy="35.770" r="4.8" fill="#8AB4F8"/>
+</svg>
