@@ -138,7 +138,7 @@ Plug in flight controller (USB VCP 0483:5740 / 2E3C:5740)
 - Status chip during the handshake: `USB · Connecting…` with "Flight controller" as detail.
 - No GNSS data after enabling passthrough: error "Passthrough is on but the GPS sends nothing. On many flight controllers the GPS pads are powered only from the battery; check the GPS port in the flight controller's Ports tab." + **[Retry]**.
 - Device screen, USB section: "Flight controller: Betaflight 4.5.1 (STM32F7X2)" and "GPS passthrough: on until the flight controller is power-cycled".
-- Receiver configuration through a flight controller: the GPS's own port is UART1; the baud-rate setting is locked ("The flight controller sets this speed"); a banner warns: "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS."
+- Receiver configuration through a flight controller: the GPS's own port is UART1; the baud-rate setting is locked ("The flight controller sets this speed"); a banner warns: "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS. Unsaved changes right after connecting are usually the flight controller's GPS auto-config, which it writes to RAM at every start."
 - Disconnecting or leaving the app does not end passthrough; only a power cycle of the flight controller does.
 
 ---

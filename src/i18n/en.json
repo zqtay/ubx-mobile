@@ -640,7 +640,7 @@
       "invalid": "Not a valid {{type}} value (decimal, or hex with 0x).",
       "useSaved": "Use saved value ({{value}})"
     },
-    "fcWarning": "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS."
+    "fcWarning": "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS. Unsaved changes right after connecting are usually the flight controller's GPS auto-config, which it writes to RAM at every start."
   },
   "map": {
     "waitingFix": "Waiting for a position fix…",

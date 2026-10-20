@@ -94,5 +94,6 @@ describe('flight controller passthrough UI (FS §2.2)', () => {
 
     await renderRouter('./src/app', { initialUrl: '/config' });
     expect(screen.getByText(/Connected through a flight controller/)).toBeTruthy();
+    expect(screen.getByText(/usually the flight controller's GPS auto-config/)).toBeTruthy();
   });
 });
