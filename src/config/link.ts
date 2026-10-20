@@ -12,6 +12,11 @@ export interface ReceiverLink {
   /** The phone side's current baud rate (UART bridges); undefined for native USB. */
   readonly localBaud: number | undefined;
   readonly client: UbxClient;
+  /**
+   * The receiver is reached through a flight controller's GPS passthrough: its baud rate is
+   * fixed by the flight controller and must not change (REQ-SER-18).
+   */
+  readonly viaFlightController?: boolean;
   /** Changes the phone side's baud rate without closing the port. */
   setLocalBaud(baud: number): Promise<void>;
   /** Records a confirmed baud change (remembered per device, shown on the Device screen). */

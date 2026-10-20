@@ -14,7 +14,8 @@ export type RuleId =
   | 'rateHigh'
   | 'rateInvalid'
   | 'powerSaveRate'
-  | 'powerSaveSleep';
+  | 'powerSaveSleep'
+  | 'baudLocked';
 
 export interface RuleFinding {
   id: RuleId;
@@ -64,12 +65,27 @@ const SIGNAL_ENABLES = [
 /** M10 limit used for the rate warning; the receiver may accept or reject higher rates. */
 const RATE_WARNING_HZ = 10;
 
+export interface RuleOptions {
+  /**
+   * The UART baud rate must stay at this value (GPS behind a flight controller, whose link to
+   * the GPS has a fixed speed; REQ-SER-18).
+   */
+  lockedBaud?: number;
+}
+
 export function checkRules(
   values: ConfigValues,
   port: CfgPort,
   baud: number | undefined,
+  options: RuleOptions = {},
 ): RuleFinding[] {
   const findings: RuleFinding[] = [];
+  if (options.lockedBaud !== undefined) {
+    const staged = values.get(KEY.UART1_BAUDRATE);
+    if (staged !== undefined && staged !== options.lockedBaud) {
+      findings.push({ id: 'baudLocked', severity: 'error' });
+    }
+  }
   const { inUbx, outUbx, outNmea } = protocolKeys(port);
 
   // Lock-out protection (REQ-CFG-10): the app talks UBX over this port.

@@ -333,7 +333,13 @@
     "messages": "Messages",
     "messagesHint": "Rate over the last 5 s · count since connecting",
     "copied": "Copied",
-    "configure": "Configure receiver"
+    "configure": "Configure receiver",
+    "flightController": "Flight controller (USB)",
+    "fcHint": "The GPS is connected to this flight controller, which forwards its data to the phone.",
+    "fcUnknown": "Passthrough was already on",
+    "passthrough": "GPS passthrough",
+    "passthroughOn": "On until the flight controller is power-cycled",
+    "passthroughOff": "Off"
   },
   "more": {
     "console": "Console",
@@ -506,7 +512,8 @@
       "limitPeakCurrent": "Lower the start-up current peak, e.g. for weak supplies. Acquisition may be slower."
     },
     "locked": {
-      "ubx": "UBX Mobile needs UBX to talk to the receiver"
+      "ubx": "UBX Mobile needs UBX to talk to the receiver",
+      "fcBaud": "The flight controller sets this speed; changing it would cut its link to the GPS."
     },
     "unit": {
       "everyNth": "per solution; 0 = off"
@@ -576,7 +583,8 @@
       "rateHigh": "{{hz}} Hz is more than M10 receivers support with several constellations; the receiver may reject it or drop constellations.",
       "throughput": "Output (about {{bytes}} B/s) may exceed {{baud}} baud. Increase the baud rate or disable messages.",
       "powerSaveRate": "Power-save modes need a measurement rate of 1 Hz or slower (now {{hz}} Hz). The receiver may reject the change or ignore the mode.",
-      "powerSaveSleep": "On/off mode puts the receiver to sleep between fixes. UBX Mobile cannot read it while it sleeps, so it will appear disconnected. Power-cycle the receiver to undo unsaved changes."
+      "powerSaveSleep": "On/off mode puts the receiver to sleep between fixes. UBX Mobile cannot read it while it sleeps, so it will appear disconnected. Power-cycle the receiver to undo unsaved changes.",
+      "baudLocked": "The baud rate cannot be changed through a flight controller: its link to the GPS has a fixed speed."
     },
     "autoDetect": "Detect again",
     "decrease": "Decrease {{name}}",
@@ -631,7 +639,8 @@
       "stage": "Stage",
       "invalid": "Not a valid {{type}} value (decimal, or hex with 0x).",
       "useSaved": "Use saved value ({{value}})"
-    }
+    },
+    "fcWarning": "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS."
   },
   "map": {
     "waitingFix": "Waiting for a position fix…",
@@ -740,6 +749,20 @@
         "A backup is taken automatically before the first change of each connection (Receiver configuration → Backup & restore).",
         "If the receiver stops answering after a change (e.g. the baud rate), power-cycle it: unsaved changes are undone. Then reconnect with auto-detect."
       ]
+    },
+    "fc": {
+      "title": "GPS on a Betaflight or INAV drone",
+      "body": [
+        "Connect the phone to the flight controller's USB port. UBX Mobile recognises Betaflight and INAV and asks before turning on GPS passthrough; the flight controller then forwards its GPS to the phone.",
+        "Passthrough stays on until the flight controller is power-cycled. Until then it does not use the GPS itself.",
+        "On many flight controllers the GPS pads are powered only from the battery. If you connect a battery, remove the propellers first.",
+        "Flight controllers usually reconfigure the GPS when they start, so settings saved from UBX Mobile may not last. The baud rate cannot be changed through a flight controller."
+      ]
     }
+  },
+  "fc": {
+    "title": "{{name}} flight controller detected",
+    "message": "Enable GPS passthrough? The flight controller connects its GPS port to the phone and stops using the GPS itself until it is power-cycled.\n\nIf a battery is connected, remove the propellers.",
+    "enable": "Enable passthrough"
   }
 }

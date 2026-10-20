@@ -39,6 +39,7 @@ The app is a **monitoring and diagnostics tool**. It shows what the receiver see
 | Receiver firmware update (UPD-*, flashing) | Risk of bricking the receiver. Configuration *is* in scope (§6.10). |
 | Configuring non-u-blox receivers (vendor-specific commands such as MediaTek `$PMTK`) | Command sets vary by vendor. Generic NMEA receivers stay monitor-only. |
 | Bluetooth SPP / BLE / TCP / NTRIP sources | Not planned (confirmed Q4). |
+| ArduPilot / PX4 GPS passthrough, flight controllers with a USB-UART bridge chip | REQ-SER-15 covers Betaflight/INAV on native USB. ArduPilot uses MAVLink-based passthrough; bridge-chip boards need a different handshake. |
 | RTK correction input, AssistNow online/offline upload | Needs network services and writes to the receiver. |
 | Offline map packages, vector maps, routing, map search | The map (§6.11) shows online OpenStreetMap raster tiles only. |
 
@@ -125,6 +126,10 @@ Primary use cases:
 | REQ-SER-12 | S | The app reconnects automatically when the same device (same VID, PID and serial number) is plugged in again during the session. | Replugging resumes data without going back to the Source screen (Android may show the permission prompt again). |
 | REQ-SER-13 | S | Launching the app by plugging in a supported receiver opens it directly on that device (USB attach intent filter). | Plugging in a u-blox receiver offers "Open with UBX Mobile". |
 | REQ-SER-14 | M | Generic, non-u-blox NMEA receivers work, with fewer fields (UBX-only fields show "—"). | An NMEA-only receiver fills the satellite list, the sky view and the Status screen. |
+| REQ-SER-15 | S | **Flight controller GPS passthrough**: a GPS module wired to a **Betaflight** or **INAV** flight controller can be used through the flight controller's USB port. The app recognises the flight controller (native USB, STM32/AT32 VCP), identifies it with read-only MSP requests and, **after the user confirms**, enables the firmware's CLI `gpspassthrough`, then detects the GPS like any other receiver. | Tested with Betaflight 4.5.x and 2025.12: plugging in the flight controller shows a confirmation; after it, the GPS module's data and identity appear. |
+| REQ-SER-16 | M | Passthrough is never enabled without asking: the confirmation appears **every time** a flight controller that is not already passing GPS data through is connected. Nothing other than MSP read requests is sent before the user agrees; the app never sends `save`, `exit` or any other CLI command that changes or reboots the flight controller. | Declining leaves the flight controller untouched (its configuration and state are as before). |
+| REQ-SER-17 | S | A flight controller that is already in passthrough (e.g. the app was reopened) is used directly, without asking again. | Reconnecting after leaving the app resumes GPS data without a dialog. |
+| REQ-SER-18 | S | Behind a flight controller, the receiver configuration does not offer baud-rate changes (they would break the flight controller's link to the GPS) and warns that the firmware may reconfigure the GPS at its next start. The Device screen shows the flight controller and that passthrough lasts until it is power-cycled. | |
 
 ### 6.4 Device information (REQ-DEV)
 

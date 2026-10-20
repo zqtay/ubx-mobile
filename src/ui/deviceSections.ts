@@ -118,9 +118,14 @@ export function deviceSections(
   if (usb) {
     const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, '0');
     const bridge = usb.driver !== 'cdc-acm';
+    const fc = usb.flightController;
     sections.push({
-      title: bridge ? t('device.usbAdapter') : t('device.usbDevice'),
-      hint: bridge ? t('device.adapterHint') : undefined,
+      title: fc
+        ? t('device.flightController')
+        : bridge
+          ? t('device.usbAdapter')
+          : t('device.usbDevice'),
+      hint: fc ? t('device.fcHint') : bridge ? t('device.adapterHint') : undefined,
       rows: [
         { label: t('device.product'), value: usb.productName },
         { label: t('device.manufacturer'), value: usb.manufacturerName },
@@ -136,6 +141,20 @@ export function deviceSections(
           value: !bridge ? t('device.baudNative') : (usb.baud ?? t('device.detecting')),
           mono: true,
         },
+        ...(fc
+          ? [
+              {
+                label: t('device.firmware'),
+                value:
+                  fc.versionLine ??
+                  ([fc.name, fc.version].filter(Boolean).join(' ') || t('device.fcUnknown')),
+              },
+              {
+                label: t('device.passthrough'),
+                value: fc.passthrough ? t('device.passthroughOn') : t('device.passthroughOff'),
+              },
+            ]
+          : []),
       ],
     });
   }

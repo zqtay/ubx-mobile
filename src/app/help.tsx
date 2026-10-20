@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AppText, Card, Screen } from '@/ui/components';
 
-const TOPICS = ['otg', 'wiring', 'power', 'baud', 'phone', 'noData', 'config'] as const;
+const TOPICS = ['otg', 'wiring', 'power', 'baud', 'fc', 'phone', 'noData', 'config'] as const;
 
 /** In-app help (M7.4): OTG, wiring, power, baud rate and troubleshooting. */
 export default function HelpScreen() {

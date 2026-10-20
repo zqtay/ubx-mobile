@@ -67,6 +67,9 @@ private const val ACTION_USB_PERMISSION = "com.ubxmobile.usbserial.USB_PERMISSIO
 private const val UBLOX_VID = 0x1546
 private val UBLOX_PIDS = intArrayOf(0x01a5, 0x01a6, 0x01a7, 0x01a8, 0x01a9)
 
+/** Betaflight/INAV flight controller virtual COM ports (STM32, AT32), REQ-SER-15. */
+private val FLIGHT_CONTROLLERS = arrayOf(intArrayOf(0x0483, 0x5740), intArrayOf(0x2e3c, 0x5740))
+
 private class Session(
   val id: String,
   val device: UsbDevice,
@@ -177,6 +180,7 @@ class UsbSerialModule : Module() {
   private fun prober(): UsbSerialProber {
     val table = UsbSerialProber.getDefaultProbeTable()
     UBLOX_PIDS.forEach { pid -> table.addProduct(UBLOX_VID, pid, CdcAcmSerialDriver::class.java) }
+    FLIGHT_CONTROLLERS.forEach { (vid, pid) -> table.addProduct(vid, pid, CdcAcmSerialDriver::class.java) }
     return UsbSerialProber(table)
   }
 

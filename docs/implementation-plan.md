@@ -162,6 +162,16 @@ Estimates assume one experienced React Native developer with some Android/Kotlin
 
 **Status (2026-10-19):** 6.1–6.10 implemented; 400 tests pass (TS §15). Deviations: backups are shared as JSON text and imported by pasting, not as files (no new native modules, so a JS reload is enough); the font-scaling and greyscale checks of 6.7 are by design (shapes, letters, outlines) and need a visual check on the phone at font scale 1.3. **Open (phone):** Console with the BE-122/BZ-251 and the phone source, compass heading-up, keep-screen-on, landscape table, periodic output on the BE-122 (then power-cycle to confirm RAM only), a backup and restore round trip, and the advanced editor on the real key set (≈ 700 keys).
 
+### M5d — Flight controller GPS passthrough (≈ 3 units)
+
+| # | Task | Ref |
+|---|---|---|
+| 5d.1 | MSP v1 client and CLI handshake (`flightController.ts`), raw-byte tap in `UsbSerialSource`, simulated flight controller in `FakeUsbNative`. | REQ-SER-15..17; TS §16 |
+| 5d.2 | USB filter and prober entries for STM32/AT32 VCP; confirmation dialog; Device screen; configuration restrictions (baud locked, auto-config warning). | REQ-SER-15, 18; FS §2.2 |
+| 5d.3 | Check with Betaflight 4.5.x and 2025.12 boards and a u-blox GPS: dialog, passthrough, detection, reconnect without dialog, declining. | |
+
+**Status (2026-10-20):** 5d.1–5d.2 implemented (REQ-SER-15..18, FS §2.2, TS §16); tests cover MSP, the handshake against a simulated Betaflight board (4.5.1 and 2025.12 version lines), declining, "no GPS port" and unknown-command errors, already-on passthrough (talkative and silent GPS), the dialog, the Device screen, the locked baud rate and the auto-config warning; Help has a flight controller topic. The USB filter and native prober changed, so a **native rebuild** is needed (`npm run android`). **Open:** 5d.3 on the real boards. The CLI texts were matched loosely (any reply containing error/unknown/invalid/fail is an error; Betaflight prints nothing on success), which is the part most worth checking on hardware.
+
 ### M7 — Hardening & release (≈ 5 units)
 
 | # | Task | Ref |

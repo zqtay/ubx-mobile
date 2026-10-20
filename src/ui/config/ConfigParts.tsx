@@ -120,7 +120,11 @@ export function StagedBar() {
   const ram = useConfigStore((s) => s.ram);
   const port = useConfigStore((s) => s.port);
   const baud = useConfigStore((s) => s.baud);
-  const found = useMemo(() => findings({ ram, staged, port, baud }), [ram, staged, port, baud]);
+  const viaFc = useConfigStore((s) => s.viaFlightController);
+  const found = useMemo(
+    () => findings({ ram, staged, port, baud, viaFlightController: viaFc }),
+    [ram, staged, port, baud, viaFc],
+  );
   if (staged.size === 0 && !busy) return null;
 
   const blocked = found.some((f) => f.severity === 'error');

@@ -249,6 +249,17 @@ export interface UsbDeviceInfo {
   portIndex: number;
   /** Detected/configured baud rate; undefined while detecting. Irrelevant for native USB (CDC-ACM). */
   baud?: number;
+  /** The GPS is reached through a Betaflight/INAV flight controller (REQ-SER-15). */
+  flightController?: FlightControllerUsbInfo;
+}
+
+export interface FlightControllerUsbInfo {
+  /** e.g. `Betaflight`; undefined when passthrough was already on at connection. */
+  name?: string;
+  version?: string;
+  /** The CLI `version` line, e.g. `Betaflight / STM32F7X2 (S7X2) 4.5.1 …`. */
+  versionLine?: string;
+  passthrough: boolean;
 }
 
 /**
@@ -272,7 +283,11 @@ export type SourceErrorCode =
   | 'E_USB_OPEN'
   | 'E_IO'
   | 'E_DETACHED'
-  | 'E_NO_DATA';
+  | 'E_NO_DATA'
+  /** The user did not allow flight controller GPS passthrough (REQ-SER-16). */
+  | 'E_FC_DECLINED'
+  /** The flight controller refused `gpspassthrough` or did not open its CLI. */
+  | 'E_FC_PASSTHROUGH';
 
 export type ConnectionState =
   | { kind: 'idle' }

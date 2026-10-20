@@ -9,7 +9,7 @@ import {
   type Mismatch,
 } from '@/config/ConfigService';
 import type { ConfigBackup } from '@/config/backups';
-import type { CfgPort } from '@/config/keys';
+import { KEY, type CfgPort } from '@/config/keys';
 import { checkRules, type RuleFinding } from '@/config/rules';
 import { allSectionKeys } from '@/config/sections';
 import { LAYER, type CfgItem, type RestartKind } from '@/config/valCodec';
@@ -35,6 +35,8 @@ export interface ConfigState {
   flash: LayerValues;
   def: LayerValues;
   hasFlash: boolean;
+  /** Connected through a flight controller's GPS passthrough (REQ-SER-18). */
+  viaFlightController: boolean;
   /** Every key has been read (advanced editor), not only the section keys. */
   allLoaded: boolean;
   /** Changes made in the app, not yet applied to the receiver (functional spec §11.5). */
@@ -88,9 +90,13 @@ export function unsavedKeys(s: Omit<Data, 'staged'>): number[] {
     .map(([key]) => key);
 }
 
-export function findings(s: Pick<ConfigState, 'ram' | 'staged' | 'port' | 'baud'>): RuleFinding[] {
+export function findings(
+  s: Pick<ConfigState, 'ram' | 'staged' | 'port' | 'baud'> & { viaFlightController?: boolean },
+): RuleFinding[] {
   if (!s.port) return [];
-  return checkRules(effectiveValues(s), s.port, s.baud);
+  return checkRules(effectiveValues(s), s.port, s.baud, {
+    lockedBaud: s.viaFlightController ? s.ram.get(KEY.UART1_BAUDRATE) : undefined,
+  });
 }
 
 const empty = () => ({
@@ -100,6 +106,7 @@ const empty = () => ({
   def: new Map<number, number>(),
   hasFlash: false,
   allLoaded: false,
+  viaFlightController: false,
   staged: new Map<number, number>(),
 });
 
@@ -136,6 +143,7 @@ export function createConfigStore(getService: () => ConfigService | undefined) {
         ...loaded,
         port: service.port,
         baud: service.localBaud,
+        viaFlightController: service.viaFlightController,
         status: 'ready',
         error: undefined,
       });
@@ -235,6 +243,7 @@ export function createConfigStore(getService: () => ConfigService | undefined) {
               allLoaded: true,
               port: service.port,
               baud: service.localBaud,
+              viaFlightController: service.viaFlightController,
               status: 'ready',
               error: undefined,
             });

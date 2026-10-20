@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { KEY } from '@/config/keys';
 import { availableSettings, sectionById } from '@/config/sections';
 import { useConfigStore } from '@/sources';
 import { unsavedKeys } from '@/state/configStore';
@@ -44,7 +45,11 @@ export default function ConfigSectionScreen() {
 
   const ready = status === 'ready' && port !== undefined;
   const effective = useMemo(() => new Map([...ram, ...staged]), [ram, staged]);
-  const settings = section && port ? availableSettings(section, port, ram, effective) : [];
+  const viaFc = useConfigStore((s) => s.viaFlightController);
+  // Behind a flight controller its link to the GPS has a fixed speed (REQ-SER-18).
+  const settings = (section && port ? availableSettings(section, port, ram, effective) : []).map(
+    (s) => (viaFc && s.key === KEY.UART1_BAUDRATE ? { ...s, locked: 'config.locked.fcBaud' } : s),
+  );
   const note =
     section?.id === 'gnss'
       ? t('config.note.gnss')

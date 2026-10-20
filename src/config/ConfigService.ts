@@ -82,6 +82,11 @@ export class ConfigService {
     return this.link.localBaud;
   }
 
+  /** Reached through a flight controller's GPS passthrough (baud fixed, REQ-SER-18). */
+  get viaFlightController() {
+    return this.link.viaFlightController ?? false;
+  }
+
   /**
    * Reads `keys` from a layer. Requests are chunked; a chunk the receiver NAKs (an unknown key)
    * is bisected so known keys are still read. Keys absent from the result are not available in

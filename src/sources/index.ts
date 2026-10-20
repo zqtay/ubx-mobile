@@ -1,4 +1,7 @@
+import { Alert } from 'react-native';
+
 import { ConfigService } from '@/config/ConfigService';
+import i18n from '@/i18n';
 import type { SourceErrorCode } from '@/domain/types';
 import { createConfigStore } from '@/state/configStore';
 import { useGnssStore } from '@/state/gnssStore';
@@ -14,6 +17,7 @@ import type { GnssSource } from './GnssSource';
 import { buildDemoLog } from './replay/demoLog';
 import { ReplaySource } from './replay/ReplaySource';
 import { SourceManager } from './SourceManager';
+import type { FlightControllerInfo } from './usb/flightController';
 import { matchesRef, refOf, UsbSerialSource } from './usb/UsbSerialSource';
 
 /** Kinds of source the user can pick in the receiver sheet. */
@@ -89,6 +93,24 @@ export async function startSource(choice: SourceChoice): Promise<void> {
   await sourceManager.start(source);
 }
 
+/**
+ * Asks before enabling GPS passthrough on a flight controller, every time (REQ-SER-16;
+ * functional spec §2.2). Resolves false when cancelled or dismissed.
+ */
+export function confirmPassthrough(fc: FlightControllerInfo): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      i18n.t('fc.title', { name: fc.name }),
+      i18n.t('fc.message'),
+      [
+        { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+        { text: i18n.t('fc.enable'), onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
+}
+
 /** Starts the USB source on a device and remembers it (REQ-SER-01..14, REQ-SRC-04). */
 export async function startUsbSource(device: UsbSerialDevice): Promise<void> {
   const { usb, usbBauds, update } = useSettings.getState();
@@ -98,6 +120,7 @@ export async function startUsbSource(device: UsbSerialDevice): Promise<void> {
     probeUbx: usb.probeUbx,
     periodicOutput: usb.probeUbx && usb.ubxMode === 'periodic-ram',
     setDtrRts: usb.setDtrRts,
+    confirmPassthrough,
     rememberedBaud: usbBauds[usbDeviceKey(refOf(device))],
     onBaudDetected: (ref, baud) => {
       const state = useSettings.getState();

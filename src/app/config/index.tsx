@@ -36,6 +36,7 @@ export default function ConfigOverviewScreen() {
   const def = useConfigStore((s) => s.def);
   const staged = useConfigStore((s) => s.staged);
   const busy = useConfigStore((s) => s.busy);
+  const viaFc = useConfigStore((s) => s.viaFlightController);
   // The staged-changes bar handles the navigation bar inset when it is shown.
   const bottom = useBottomInset(staged.size > 0 || !!busy);
   const unsaved = useMemo(
@@ -88,6 +89,7 @@ export default function ConfigOverviewScreen() {
         ) : null}
         {availability === 'ok' || ready ? <ConfigLoadState /> : null}
         <ConfigOutcomeBanner />
+        {viaFc && ready ? <Banner tone="warning" message={t('config.fcWarning')} /> : null}
         {ready ? (
           <>
             <Card>

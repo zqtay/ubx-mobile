@@ -116,6 +116,31 @@ When the port opens, the status chip shows `USB · Detecting…`, and the Device
    - Nothing valid after every baud rate → error "No GNSS data detected" + **[Change baud] [Retry]**.
 4. **Periodic data**: in *Poll mode* (default) the app polls NAV-PVT, NAV-SAT (or NAV-SVINFO), NAV-SIG, NAV-DOP and NAV-STATUS every 1 s on u-blox receivers. If the receiver already outputs these messages periodically, polling for that message stops.
 
+### 2.2 Flight controller GPS passthrough (REQ-SER-15..18)
+
+For a GPS module on a Betaflight or INAV flight controller, connected to the phone through the flight controller's USB port.
+
+```
+Plug in flight controller (USB VCP 0483:5740 / 2E3C:5740)
+  ├─ Listen 1 s: GNSS data already flowing? ── yes → passthrough is still on → normal detection (no dialog)
+  ├─ MSP identify (read-only): FC_VARIANT, FC_VERSION ── no answer → passthrough already on (GPS quiet) → normal detection
+  ├─ Dialog (every time, never remembered):
+  │    "Betaflight flight controller detected
+  │     Enable GPS passthrough? The flight controller connects its GPS port to the phone
+  │     and stops using the GPS itself until it is power-cycled. If a battery is
+  │     connected, remove the propellers."            [Cancel]  [Enable passthrough]
+  │    Cancel → nothing more is sent; error banner "GPS passthrough not enabled" + [Retry]
+  ├─ CLI: "#" → wait for the CLI prompt → "version" (for the Device screen) → "gpspassthrough"
+  │    Error reply (no GPS port, command unknown) → error banner with the firmware's message
+  └─ Normal detection of the GPS module (listen, UBX probe); no auto-baud (the flight controller fixes the GPS port speed)
+```
+
+- Status chip during the handshake: `USB · Connecting…` with "Flight controller" as detail.
+- No GNSS data after enabling passthrough: error "Passthrough is on but the GPS sends nothing. On many flight controllers the GPS pads are powered only from the battery; check the GPS port in the flight controller's Ports tab." + **[Retry]**.
+- Device screen, USB section: "Flight controller: Betaflight 4.5.1 (STM32F7X2)" and "GPS passthrough: on until the flight controller is power-cycled".
+- Receiver configuration through a flight controller: the GPS's own port is UART1; the baud-rate setting is locked ("The flight controller sets this speed"); a banner warns: "Connected through a flight controller. Betaflight/INAV may reconfigure the GPS at its next start (GPS auto-config), overwriting saved changes; changing protocols or messages can stop the flight controller from using the GPS."
+- Disconnecting or leaving the app does not end passthrough; only a power cycle of the flight controller does.
+
 ---
 
 ## 3. Status screen

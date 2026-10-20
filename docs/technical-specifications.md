@@ -934,3 +934,34 @@ The handlers are plain `onResponderGrant/Move/Release` props, not `PanResponder.
 | Backup / restore (REQ-CFG-16) | `ConfigService.readAll(layer)` uses the CFG-VALGET wildcard `0x0FFFFFFF` with `position` paging (as in the u-center 2 dumps); `backup()` stores RAM/BBR/Flash/Default. `config/backups.ts`: format v1 (optional layers), parse/validate, restore plan (changes / unchanged / unknown), saved-values view (BBR over Flash), different-receiver warning. Restore stages the changes (`stageMany`). |
 | Advanced editor (REQ-CFG-17) | `config/groups.ts`: group names by group ID, type from the key database or the size bits, ranges, raw parsing (decimal or 0x hex). `configStore.loadAll()` reads every key in all layers; afterwards reloads re-read all loaded keys, so unsaved markers cover every key. |
 | Accessibility (REQ-NFR-07) | Contrast tests cover the new colour pairs (the light `success` colour was darkened to #2A7530 for the tinted rows); a screen test checks that every button/link on the main screens has an accessible name. |
+
+---
+
+## 16. Flight controller GPS passthrough (REQ-SER-15..18, FS §2.2)
+
+**Scope:** Betaflight (4.5.x and calendar versions such as 2025.12) and INAV on native USB (CDC-ACM virtual COM port: STM32 `0483:5740`, AT32 `2E3C:5740`). Variants accepted from MSP: `BTFL` (Betaflight), `INAV`, plus `EMUF`/`RTFL` (Betaflight forks with the same CLI).
+
+**Stage before receiver detection** (`sources/usb/flightController.ts`, run by `UsbSerialSource` only for these USB IDs):
+
+1. **Listen** ~1 s through the protocol pipeline. Valid NMEA/UBX frames → passthrough already active (REQ-SER-17) → skip to detection.
+2. **Identify (MSP v1, read-only):** `$M<` + size 0 + command + checksum (size XOR command) for `MSP_API_VERSION` (1), `MSP_FC_VARIANT` (2, 4 ASCII chars) and `MSP_FC_VERSION` (3, three bytes; shown as reported, since calendar versions do not fit the old major.minor.patch bytes). Replies start `$M>`; `$M!` is an error. No reply within 500 ms → the board is already bridging to a GPS that was quiet while listening (a Betaflight/INAV board otherwise always answers MSP) → treated as passthrough on, normal detection. A variant other than those above → plain detection without passthrough.
+3. **Confirm:** `UsbSourceOptions.confirmPassthrough(info)` (the app shows a dialog; REQ-SER-16). Declined → connection error `E_FC_DECLINED` with a retry action; nothing else is sent.
+4. **CLI handshake:** raw bytes (a tap before the pipeline) are collected as text.
+   - Send `#`; wait 800 ms for the CLI banner/prompt (text containing `CLI` or a line starting with `# `); up to 3 attempts (only `#` is resent; Betaflight treats other non-MSP bytes such as `R` as commands, e.g. reboot to bootloader).
+   - Every exchange (sent text, received bytes as printable text) is written to the diagnostics log (area `fc`), so a failing board can be diagnosed from a shared log.
+   - Send `version\r\n`; the line containing the variant name (e.g. `# Betaflight / STM32F7X2 (S7X2) 4.5.1 …`) is kept for the Device screen.
+   - Send `gpspassthrough\r\n`; collect for 700 ms. A reply matching `/error|unknown|invalid|failed/i` (after removing the echoed command) fails with that text (`E_FC_PASSTHROUGH`); otherwise passthrough is assumed (Betaflight prints nothing on success; from then on bytes are bridged to the GPS port).
+   - Never sent: `exit` (reboots), `save`, `defaults`, or any `set`.
+5. **Detection** continues as for CDC devices (no auto-baud: the VCP baud is ignored and the flight controller fixes the GPS port speed). No GNSS data → `E_NO_DATA` with the GPS-power hint.
+
+**One connection attempt at a time:** the USB permission dialog pauses the activity, so the source is suspended and resumed while `connect()` is still waiting for permission. `resume()` therefore never starts a second attempt while one is running; it only reconnects afterwards if that attempt ended without a session. (Two interleaved attempts reset each other's receive buffer, which made the handshake report "did not open its CLI".)
+
+**Re-enumeration and I/O errors:** Betaflight pulses the USB data line at start-up (`usbGenerateDisconnectPulse`), so a board that was just plugged in can vanish and reappear with a new device ID shortly after the port opened. The native module then reports `E_IO` ("Queueing USB request failed"), closes the session, and the detach broadcast that follows finds no session (only `onDetached`). The source therefore:
+- stops the running attempt as soon as its session is gone (no conclusions from a dead port; e.g. "no MSP answer" no longer means "passthrough already on" then);
+- treats `E_IO` as a disconnect (also marked by `onDetached` for the same VID/PID) and reconnects when the device is listed again after 1.5 s or reattaches (new device ID); permission persists when "Always open UBX Mobile" was ticked, otherwise Android asks again;
+- reports `E_IO` only after 3 losses in a row without reaching "receiving";
+- ignores `setParameters` rejections from a closed port during detection.
+
+**Effects elsewhere:** `UsbDeviceInfo.flightController = { variant, version?, versionLine?, passthrough: true }`; `ReceiverLink.port = 'UART1'`, `ReceiverLink.viaFlightController = true`; the rule `baudLocked` (error) blocks staging a baud change and the Port section shows the baud as locked; the configuration overview shows the auto-config warning. `plugins/withUsbHost.js` adds `vendor-id`/`product-id` pairs for the two VCPs (product-specific, so ST-Link and other ST devices are not matched), and the native prober maps them to the CDC-ACM driver.
+
+**Tests:** `FakeUsbNative` simulates a flight controller in front of the BE-122 simulation: MSP answers, `#` → CLI banner and prompt with echo, `version`, `gpspassthrough` (success, "no GPS port" error, unknown command), then bridging to the receiver; plus "already in passthrough" and "declined".

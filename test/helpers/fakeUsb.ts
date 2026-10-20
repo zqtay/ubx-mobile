@@ -36,6 +36,46 @@ export interface SimReceiver {
   periodMs?: number;
   /** Simulated configuration database (CFG-VALGET/VALSET/…); absent = config messages unanswered. */
   config?: SimConfigOptions;
+  /** The receiver is wired to a Betaflight/INAV flight controller (REQ-SER-15). */
+  flightController?: SimFlightController;
+}
+
+export interface SimFlightController {
+  variant: string;
+  version: [number, number, number];
+  /** Printed by the CLI `version` command. */
+  versionLine: string;
+  /** How `gpspassthrough` answers: bridges to the GPS, no GPS port, or an unknown command. */
+  gps: 'ok' | 'no-port' | 'unknown';
+  /** Passthrough already active when the phone connects (REQ-SER-17). */
+  passthrough?: boolean;
+  /** How many `#` the board ignores before opening its CLI (Infinity = never). */
+  ignoreHash?: number;
+}
+
+/** Betaflight 4.5 in front of the BE-122 simulation. */
+export const BETAFLIGHT_45: SimFlightController = {
+  variant: 'BTFL',
+  version: [4, 5, 1],
+  versionLine: 'Betaflight / STM32F7X2 (S7X2) 4.5.1 Jul 15 2024 / 10:12:00 (77d01ba3b) MSP API: 1.46',
+  gps: 'ok',
+};
+
+/** USB descriptor of a flight controller's STM32 virtual COM port. */
+export const FC_DEVICE = {
+  vendorId: 0x0483,
+  productId: 0x5740,
+  manufacturerName: 'Betaflight',
+  productName: 'Betaflight STM32F7x2',
+  driver: 'cdc-acm' as const,
+};
+
+const text = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));
+
+function mspReply(command: number, payload: Uint8Array): Uint8Array {
+  let sum = payload.length ^ command;
+  for (const b of payload) sum ^= b;
+  return Uint8Array.of(0x24, 0x4d, 0x3e, payload.length, command, ...payload, sum);
 }
 
 const ascii = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));
@@ -102,6 +142,14 @@ export class FakeUsbNative {
     { deviceId: number; baud: number; timer?: ReturnType<typeof setInterval> }
   >();
   private nextSession = 1;
+  /** Flight controller state: MSP, CLI, or bridging to the GPS. */
+  private fcState: 'msp' | 'cli' | 'passthrough' = 'msp';
+  private cliLine = '';
+  /** CLI commands the flight controller received (REQ-SER-16: only `version`, `gpspassthrough`). */
+  cliCommands: string[] = [];
+  private ignoredHashes = 0;
+  /** MSP commands the flight controller received. */
+  mspCommands: number[] = [];
   /** The receiver's configuration database, when `receiver.config` is set. */
   readonly config?: ConfigSim;
   /** A copy: the simulated receiver's baud rate changes with its configuration. */
@@ -109,6 +157,7 @@ export class FakeUsbNative {
 
   constructor(receiver: SimReceiver, device: Partial<UsbSerialDevice> = {}) {
     this.receiver = { ...receiver };
+    if (receiver.flightController?.passthrough) this.fcState = 'passthrough';
     if (receiver.config) {
       this.config = new ConfigSim(receiver.config, (baud) => {
         // undefined = the receiver went silent (garbage at any phone baud rate).
@@ -154,18 +203,26 @@ export class FakeUsbNative {
   });
   setParameters = jest.fn(async (sessionId: string, params: { baudRate: number }) => {
     const s = this.sessions.get(sessionId);
-    if (s) s.baud = params.baudRate;
+    // Like the native module: a closed session rejects.
+    if (!s) throw new Error('Port is not open');
+    s.baud = params.baudRate;
     this.restartOutput(sessionId);
   });
   write = jest.fn(async (sessionId: string, dataBase64: string) => {
     const s = this.sessions.get(sessionId);
     if (!s) throw new Error('not open');
     const bytes = base64ToBytes(dataBase64);
+    const fc = this.receiver.flightController;
+    if (fc && this.fcState !== 'passthrough') {
+      this.flightControllerInput(sessionId, fc, bytes);
+      return bytes.length;
+    }
     for (const f of new StreamDecoder().push(bytes, 0)) {
       if (f.kind !== 'ubx') continue;
       this.written.push({ cls: f.cls, id: f.id, payloadLength: f.payload.length });
       // At the wrong baud rate the receiver hears garbage and stays silent.
-      if (s.baud !== this.receiver.baud || !this.receiver.ubx) continue;
+      // (Through a flight controller the USB baud is irrelevant: it bridges at the GPS port speed.)
+      if ((!fc && s.baud !== this.receiver.baud) || !this.receiver.ubx) continue;
       const configReplies = f.cls === 0x06 ? this.config?.handle(f.id, f.payload) : undefined;
       if (configReplies) {
         for (const r of configReplies) void Promise.resolve().then(() => this.data(sessionId, r));
@@ -221,6 +278,42 @@ export class FakeUsbNative {
     this.unplugged = device;
   }
 
+  /**
+   * Simulates a flight controller pulsing USB at start-up: the open port fails with an I/O error
+   * ("Queueing USB request failed"), the device detaches and reappears with a new device ID.
+   * Permission is kept (as when the user ticked "Always open UBX Mobile"); the board restarts,
+   * so passthrough is off again.
+   */
+  reenumerate(): void {
+    const device = this.devices.shift();
+    if (!device) return;
+    for (const [id, s] of this.sessions) {
+      if (s.deviceId !== device.deviceId) continue;
+      if (s.timer) clearInterval(s.timer);
+      this.sessions.delete(id);
+      this.fire('onError', { sessionId: id, code: 'E_IO', message: 'Queueing USB request failed' });
+    }
+    this.fire('onDetached', {
+      deviceId: device.deviceId,
+      vendorId: device.vendorId,
+      productId: device.productId,
+    });
+    const next = { ...device, deviceId: device.deviceId + 1 };
+    this.devices.push(next);
+    this.fcState = this.receiver.flightController?.passthrough ? 'passthrough' : 'msp';
+    this.cliLine = '';
+    this.fire('onAttached', next);
+  }
+
+  /** Simulates an I/O error on open sessions while the device stays attached. */
+  ioError(): void {
+    for (const [id, s] of this.sessions) {
+      if (s.timer) clearInterval(s.timer);
+      this.sessions.delete(id);
+      this.fire('onError', { sessionId: id, code: 'E_IO', message: 'Queueing USB request failed' });
+    }
+  }
+
   /** Simulates plugging the same device back in (new deviceId, permission must be re-granted). */
   replug(): void {
     if (!this.unplugged) return;
@@ -249,11 +342,61 @@ export class FakeUsbNative {
     const { periodic, periodMs } = this.receiver;
     if (!periodic || !periodMs) return;
     s.timer = setInterval(() => {
+      const fc = this.receiver.flightController;
+      // A flight controller forwards the GPS only in passthrough.
+      if (fc && this.fcState !== 'passthrough') return;
       // At the wrong baud the phone receives garbage bytes instead of frames.
       const bytes =
-        s.baud === this.receiver.baud ? periodic() : Uint8Array.of(0x00, 0xff, 0x13, 0x88);
+        fc || s.baud === this.receiver.baud ? periodic() : Uint8Array.of(0x00, 0xff, 0x13, 0x88);
       this.data(sessionId, bytes);
     }, periodMs);
+  }
+
+  /** Betaflight-like MSP and CLI behaviour before passthrough. */
+  private flightControllerInput(sessionId: string, fc: SimFlightController, bytes: Uint8Array): void {
+    const send = (reply: Uint8Array) => void Promise.resolve().then(() => this.data(sessionId, reply));
+    for (let i = 0; i < bytes.length; i++) {
+      const b = bytes[i];
+      if (this.fcState === 'msp') {
+        // MSP v1 request without payload: $ M < 0 cmd chk
+        if (b === 0x24 && bytes[i + 1] === 0x4d && bytes[i + 2] === 0x3c) {
+          const command = bytes[i + 4];
+          this.mspCommands.push(command);
+          if (command === 1) send(mspReply(1, Uint8Array.of(0, 1, 46)));
+          if (command === 2) send(mspReply(2, text(fc.variant)));
+          if (command === 3) send(mspReply(3, Uint8Array.from(fc.version)));
+          i += 5;
+        } else if (b === 0x23) {
+          if (this.ignoredHashes < (fc.ignoreHash ?? 0)) {
+            this.ignoredHashes += 1;
+            continue;
+          }
+          this.fcState = 'cli';
+          send(text("\r\nEntering CLI Mode, type 'exit' to return, or 'help'\r\n\r\n# "));
+        }
+        continue;
+      }
+      // CLI: echo, then run the line.
+      send(Uint8Array.of(b));
+      if (b !== 0x0d && b !== 0x0a) {
+        this.cliLine += String.fromCharCode(b);
+        continue;
+      }
+      const line = this.cliLine.trim();
+      this.cliLine = '';
+      if (!line) continue;
+      this.cliCommands.push(line);
+      if (line === 'version') {
+        send(text(`\r\n# ${fc.versionLine}\r\n\r\n# `));
+      } else if (line === 'gpspassthrough' && fc.gps === 'ok') {
+        this.fcState = 'passthrough';
+        return;
+      } else if (line === 'gpspassthrough' && fc.gps === 'no-port') {
+        send(text('\r\n###ERROR IN gpspassthrough: GPS forwarding failed###\r\n\r\n# '));
+      } else {
+        send(text("\r\nUnknown command, try 'help'\r\n\r\n# "));
+      }
+    }
   }
 
   private fire<K extends keyof UsbSerialEvents>(

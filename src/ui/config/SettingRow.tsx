@@ -83,7 +83,7 @@ export function SettingRow({
               label={o.label}
               selected={o.value === value}
               accessibilityLabel={`${label}: ${o.label}`}
-              onPress={() => !disabled && onChange(o.value)}
+              onPress={() => !disabled && !locked && onChange(o.value)}
             />
           ))}
         </View>
@@ -94,7 +94,7 @@ export function SettingRow({
           <StepButton
             icon="minus"
             label={t('config.decrease', { name: label })}
-            disabled={disabled || value === undefined || value <= c.min}
+            disabled={disabled || locked || value === undefined || value <= c.min}
             onPress={() => onChange(Math.max(c.min, (value ?? c.min) - (c.step ?? 1)))}
           />
           <AppText
@@ -106,7 +106,7 @@ export function SettingRow({
           <StepButton
             icon="plus"
             label={t('config.increase', { name: label })}
-            disabled={disabled || value === undefined || value >= c.max}
+            disabled={disabled || locked || value === undefined || value >= c.max}
             onPress={() => onChange(Math.min(c.max, (value ?? c.min) + (c.step ?? 1)))}
           />
           <AppText variant="caption" muted style={styles.flex}>

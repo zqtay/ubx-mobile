@@ -31,6 +31,8 @@ Every update must be signed with the **same key** as the version already install
    UBX_RELEASE_KEY_PASSWORD=<password>
    ```
 
+   `UBX_RELEASE_STORE_PASSWORD` opens the keystore file and `UBX_RELEASE_KEY_PASSWORD` unlocks the key inside it. A PKCS12 keystore (as created in step 1) has a single password, so both are the password you chose in step 1. They differ only for an older JKS keystore created with a separate `-keypass`.
+
    On a build server, use the environment variables `ORG_GRADLE_PROJECT_UBX_RELEASE_STORE_FILE` and so on instead.
 
 3. **Back up** the `.p12` file and both passwords, in two places such as a password manager and an offline copy.
